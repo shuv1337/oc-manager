@@ -2,6 +2,20 @@
 
 Terminal UI for inspecting, filtering, and pruning OpenCode metadata stored on disk. The app is written in TypeScript, runs on Bun, and renders with [`@opentui/react`](https://github.com/open-tui/opentui).
 
+## Screenshots
+
+<p align="center">
+  <img src="home-screen.png" alt="OpenCode Metadata Manager home screen showing projects and sessions" width="85%" />
+  <br />
+  <em>Main workspace with Projects (left) and Sessions (right) panels.</em>
+</p>
+
+<p align="center">
+  <img src="help-screen.png" alt="OpenCode Metadata Manager help overlay" width="85%" />
+  <br />
+  <em>Contextual help overlay with key bindings and tips.</em>
+</p>
+
 ## Features
 - List both OpenCode projects and sessions from a local metadata root.
 - Filter by “missing only”, bulk-select, and delete metadata safely.
