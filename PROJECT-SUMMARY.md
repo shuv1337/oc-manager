@@ -65,14 +65,22 @@ Work Completed
 
 How To Run
 ----------
-- Run: `bun run tui [-- --root /path/to/storage]`
+- Zero-install via npm: `bunx opencode-manager [--root /path/to/storage]` (preferred).
+- Local dev: `bun run tui [-- --root /path/to/storage]`.
 - Legacy launcher: `./manage_opencode_projects.py [--root PATH] [--bun /path/to/bun] [-- ...extra TUI args]` keeps older automation working while delegating to Bun.
 - Keys:
   - Global: `Tab`/`1`/`2` switch tabs, `/` search, `X` clear search, `R` reload, `Q` quit, `?` help
   - Projects: `Space` select, `A` select all, `M` toggle missing, `D` delete, `Enter` view sessions
   - Sessions: `Space` select, `S` sort, `D` delete, `C` clear project filter, `Enter` details
 - Optional tmux usage (when permitted): `tmux new -s opencode-tui 'bun run tui'`
-- CLI help: `bun run tui -- --help` (or `manage_opencode_projects.py -- --help`) prints the built-in usage block with key bindings.
+- CLI help: `bun run tui -- --help` (or `bunx opencode-manager -- --help`, or `manage_opencode_projects.py -- --help`) prints the built-in usage block with key bindings.
+
+Packaging & Publish Checklist
+-----------------------------
+1. Install dependencies with `bun install` (Bun v1.1+ only).
+2. Type-check via `bun run typecheck` (runs `tsc --noEmit`).
+3. Update the version in `package.json` as needed.
+4. Run `npm publish` (package exposes the Bun-native `opencode-manager` bin with public access).
 
 Outstanding Recommendations (Not Yet Implemented)
 -------------------------------------------------

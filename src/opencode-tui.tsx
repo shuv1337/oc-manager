@@ -76,13 +76,21 @@ const PALETTE = {
 
 type ChildrenProps = { children: React.ReactNode }
 
-const Section: React.FC<{ title: string } & ChildrenProps> = ({ title, children }) => (
+const Section = ({ title, children }: { title: string } & ChildrenProps) => (
   <box title={title} style={{ border: true, padding: 1, marginBottom: 1, flexDirection: "column" }}>
     {children}
   </box>
 )
 
-const SearchBar: React.FC<{ active: boolean; context: string; query: string }> = ({ active, context, query }) => (
+const SearchBar = ({
+  active,
+  context,
+  query,
+}: {
+  active: boolean
+  context: string
+  query: string
+}) => (
   <box style={{ border: true, padding: 1, marginBottom: 1, flexDirection: "row", gap: 1 }}>
     <text fg={PALETTE.accent}>Search</text>
     <text>({context}):</text>
@@ -94,12 +102,12 @@ const SearchBar: React.FC<{ active: boolean; context: string; query: string }> =
   </box>
 )
 
-const Row: React.FC<ChildrenProps> = ({ children }) => {
+const Row = ({ children }: ChildrenProps) => {
   const kids = React.Children.toArray(children).filter((c) => !(typeof c === "string" && c.trim() === ""))
   return <box style={{ flexDirection: "row", alignItems: "baseline" }}>{kids as any}</box>
 }
 
-const Bullet: React.FC<ChildrenProps> = ({ children }) => {
+const Bullet = ({ children }: ChildrenProps) => {
   const kids = React.Children.toArray(children).filter((c) => !(typeof c === "string" && c.trim() === ""))
   return (
     <Row>
@@ -109,14 +117,12 @@ const Bullet: React.FC<ChildrenProps> = ({ children }) => {
   )
 }
 
-const Columns: React.FC<ChildrenProps> = ({ children }) => {
+const Columns = ({ children }: ChildrenProps) => {
   const kids = React.Children.toArray(children).filter((c) => !(typeof c === "string" && c.trim() === ""))
   return <box style={{ flexDirection: "row", gap: 2, marginTop: 1, flexGrow: 1 }}>{kids as any}</box>
 }
 
-const KeyChip: React.FC<{ k: string }> = ({ k }) => (
-  <text fg={PALETTE.key}>[{k}]</text>
-)
+const KeyChip = ({ k }: { k: string }) => <text fg={PALETTE.key}>[{k}]</text>
 
 const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function ProjectsPanel(
   { root, active, locked, searchQuery, onNotify, requestConfirm, onNavigateToSessions },
@@ -673,18 +679,18 @@ const HelpScreen = ({ onDismiss }: { onDismiss: () => void }) => {
         <box style={{ flexDirection: "column", flexGrow: 1 }}>
           <Section title="Global">
             <Bullet>
-              <KeyChip k="Tab" /><text> / </text><KeyChip k="1" /><text> / </text><KeyChip k="2" />
+              <KeyChip k="Tab" /> <text> / </text> <KeyChip k="1" /> <text> / </text> <KeyChip k="2" />
               <text> — Switch tabs</text>
             </Bullet>
             <Bullet>
-              <KeyChip k="R" /><text> — Reload active view</text>
+              <KeyChip k="R" /> <text> — Reload active view</text>
             </Bullet>
             <Bullet>
               <text>Search current tab: </text>
-              <KeyChip k="/" /><text> — start, </text><KeyChip k="X" /><text> — clear</text>
+              <KeyChip k="/" /> <text> — start, </text> <KeyChip k="X" /> <text> — clear</text>
             </Bullet>
             <Bullet>
-              <KeyChip k="?" /><text> / </text><KeyChip k="H" /><text> — Toggle help</text>
+              <KeyChip k="?" /> <text> / </text> <KeyChip k="H" /> <text> — Toggle help</text>
             </Bullet>
             <Bullet>
               <text>Quit: </text>
@@ -695,11 +701,11 @@ const HelpScreen = ({ onDismiss }: { onDismiss: () => void }) => {
           <Section title="Projects">
             <Bullet>
               <text>Move: </text>
-              <KeyChip k="Up" /><text> / </text><KeyChip k="Down" />
+              <KeyChip k="Up" /> <text> / </text> <KeyChip k="Down" />
             </Bullet>
             <Bullet>
               <text>Select: </text>
-              <KeyChip k="Space" /><text> — Toggle highlighted</text>
+              <KeyChip k="Space" /> <text> — Toggle highlighted</text>
             </Bullet>
             <Bullet>
               <text>Select all: </text>
@@ -707,7 +713,7 @@ const HelpScreen = ({ onDismiss }: { onDismiss: () => void }) => {
             </Bullet>
             <Bullet>
               <text>Filter: </text>
-              <KeyChip k="M" /><text> — Missing-only</text>
+              <KeyChip k="M" /> <text> — Missing-only</text>
             </Bullet>
             <Bullet>
               <text fg={PALETTE.danger}>Delete: </text>
@@ -729,11 +735,11 @@ const HelpScreen = ({ onDismiss }: { onDismiss: () => void }) => {
           <Section title="Sessions">
             <Bullet>
               <text>Move: </text>
-              <KeyChip k="Up" /><text> / </text><KeyChip k="Down" />
+              <KeyChip k="Up" /> <text> / </text> <KeyChip k="Down" />
             </Bullet>
             <Bullet>
               <text>Select: </text>
-              <KeyChip k="Space" /><text> — Toggle highlighted</text>
+              <KeyChip k="Space" /> <text> — Toggle highlighted</text>
             </Bullet>
             <Bullet>
               <text>Toggle sort (updated/created): </text>
@@ -760,13 +766,13 @@ const HelpScreen = ({ onDismiss }: { onDismiss: () => void }) => {
 
           <Section title="Tips">
             <Bullet>
-              <text>Use </text><KeyChip k="M" /><text> to quickly isolate missing projects.</text>
+              <text>Use </text> <KeyChip k="M" /> <text> to quickly isolate missing projects.</text>
             </Bullet>
             <Bullet>
-              <text>Press </text><KeyChip k="R" /><text> to refresh after cleanup.</text>
+              <text>Press </text> <KeyChip k="R" /> <text> to refresh after cleanup.</text>
             </Bullet>
             <Bullet>
-              <text>Dismiss help with </text><KeyChip k="Enter" /> <text> or </text><KeyChip k="Esc" />
+              <text>Dismiss help with </text> <KeyChip k="Enter" /> <text> or </text> <KeyChip k="Esc" />
             </Bullet>
           </Section>
         </box>
@@ -824,10 +830,7 @@ const App = ({ root }: { root: string }) => {
 
   const switchTab = useCallback((direction: "next" | "prev" | TabKey) => {
     setActiveTab((prev) => {
-      if (direction === "next") {
-        return prev === "projects" ? "sessions" : "projects"
-      }
-      if (direction === "prev") {
+      if (direction === "next" || direction === "prev") {
         return prev === "projects" ? "sessions" : "projects"
       }
       return direction
@@ -929,7 +932,7 @@ const App = ({ root }: { root: string }) => {
       const handler = activeTab === "projects" ? projectsRef.current : sessionsRef.current
       handler?.handleKey(key)
     },
-    [activeTab, cancelConfirm, confirmState, executeConfirm, notify, renderer, showHelp, switchTab],
+    [activeTab, cancelConfirm, confirmState, executeConfirm, notify, renderer, searchActive, searchQuery, showHelp, switchTab],
   )
 
   useKeyboard(handleGlobalKey)
@@ -959,11 +962,11 @@ const App = ({ root }: { root: string }) => {
         {sessionFilter ? <text fg="#a3e635">Session filter: {sessionFilter}</text> : null}
       </box>
 
-      {showHelp ? null : (
-        (searchActive || searchQuery) ? (
-          <SearchBar active={searchActive} context={activeTab} query={searchQuery} />
-        ) : null
-      )}
+      {showHelp
+        ? null
+        : searchActive || searchQuery
+        ? <SearchBar active={searchActive} context={activeTab} query={searchQuery} />
+        : null}
 
       {showHelp ? (
         <HelpScreen onDismiss={() => setShowHelp(false)} />

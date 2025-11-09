@@ -1,9 +1,46 @@
 {
-  "name": "opencode-tools",
-  "private": true,
+  "name": "opencode-manager",
+  "version": "0.1.0",
+  "description": "Terminal UI for inspecting OpenCode metadata stores.",
   "type": "module",
+  "license": "MIT",
+  "packageManager": "bun@1.1.29",
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "bin": {
+    "opencode-manager": "./src/bin/opencode-manager.ts"
+  },
+  "files": [
+    "src",
+    "bun.lock",
+    "tsconfig.json",
+    "PROJECT-SUMMARY.md",
+    "manage_opencode_projects.py",
+    "LICENSE"
+  ],
   "scripts": {
-    "tui": "bun src/opencode-tui.tsx"
+    "tui": "bun src/opencode-tui.tsx",
+    "dev": "bun --watch src/opencode-tui.tsx",
+    "typecheck": "bunx tsc --noEmit",
+    "prepublishOnly": "bun run typecheck"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kcrommett/oc-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kcrommett/oc-manager/issues"
+  },
+  "keywords": [
+    "tui",
+    "bun",
+    "opencode",
+    "cli",
+    "metadata"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@opentui/core": "^0.1.34",
@@ -13,7 +50,6 @@
   "devDependencies": {
     "@types/node": "^22.8.5",
     "@types/react": "^19.0.0",
-    "tsx": "^4.19.1",
     "typescript": "^5.6.3"
   }
 }
