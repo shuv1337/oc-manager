@@ -1,15 +1,15 @@
 {
   "name": "opencode-manager",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Terminal UI for inspecting OpenCode metadata stores.",
   "type": "module",
   "license": "MIT",
-  "packageManager": "bun@1.1.29",
+  "packageManager": "bun@1.3.2",
   "engines": {
-    "bun": ">=1.1.0"
+    "bun": ">=1.3.0"
   },
   "bin": {
-    "opencode-manager": "./src/bin/opencode-manager.ts"
+    "opencode-manager": "src/bin/opencode-manager.ts"
   },
   "files": [
     "src",
@@ -43,8 +43,8 @@
     "access": "public"
   },
   "dependencies": {
-    "@opentui/core": "^0.1.34",
-    "@opentui/react": "^0.1.34",
+    "@opentui/core": "^0.1.44",
+    "@opentui/react": "^0.1.44",
     "react": "^19.0.0"
   },
   "devDependencies": {

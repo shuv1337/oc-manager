@@ -1,5 +1,6 @@
 import type { KeyEvent, SelectOption } from "@opentui/core"
-import { render, useKeyboard, useRenderer } from "@opentui/react"
+import { createRoot, useKeyboard, useRenderer } from "@opentui/react"
+import { createCliRenderer } from "@opentui/core"
 import React, {
   forwardRef,
   useCallback,
@@ -1037,7 +1038,8 @@ Key bindings:
 
 async function bootstrap() {
   const { root } = parseArgs()
-  await render(<App root={root} />)
+  const renderer = await createCliRenderer()
+  createRoot(renderer).render(<App root={root} />)
 }
 
 bootstrap().catch((error) => {
