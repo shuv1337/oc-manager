@@ -11,6 +11,7 @@ import React, {
   useState,
 } from "react"
 import { resolve } from "node:path"
+import { exec } from "node:child_process"
 import {
   DEFAULT_ROOT,
   ProjectRecord,
@@ -74,6 +75,18 @@ const PALETTE = {
   key: "#fbbf24", // amber
   muted: "#9ca3af", // gray
 } as const
+
+function copyToClipboard(text: string): void {
+  const cmd = process.platform === "darwin" ? "pbcopy" : "xclip -selection clipboard"
+  const proc = exec(cmd, (error) => {
+    if (error) {
+      // We can't easily notify from here without context, but it's a best effort
+      console.error("Failed to copy to clipboard:", error)
+    }
+  })
+  proc.stdin?.write(text)
+  proc.stdin?.end()
+}
 
 type ChildrenProps = { children: React.ReactNode }
 
@@ -555,6 +568,13 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
         requestDeletion()
         return
       }
+      if (letter === "y") {
+        if (currentSession) {
+          copyToClipboard(currentSession.sessionId)
+          onNotify(`Copied ID ${currentSession.sessionId} to clipboard`)
+        }
+        return
+      }
       if (key.name === "return" || key.name === "enter") {
         if (currentSession) {
           const title = currentSession.title && currentSession.title.trim().length > 0 ? currentSession.title : currentSession.sessionId
@@ -590,7 +610,7 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
     >
       <box flexDirection="column" marginBottom={1}>
         <text>Filter: {projectFilter ? `project ${projectFilter}` : "none"} | Sort: {sortMode} | Search: {searchQuery || "(none)"} | Selected: {selectedIndexes.size}</text>
-        <text>Keys: Space select, S sort, D delete, C clear filter, Enter details, Esc clear</text>
+        <text>Keys: Space select, S sort, D delete, Y copy ID, C clear filter, Enter details, Esc clear</text>
       </box>
 
       {error ? (
@@ -754,6 +774,10 @@ const HelpScreen = ({ onDismiss }: { onDismiss: () => void }) => {
               <text fg={PALETTE.danger}>Delete: </text>
               <KeyChip k="D" />
               <text> — With confirmation</text>
+            </Bullet>
+            <Bullet>
+              <text>Copy ID: </text>
+              <KeyChip k="Y" />
             </Bullet>
             <Bullet>
               <text>Show details: </text>
