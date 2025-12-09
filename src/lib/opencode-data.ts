@@ -309,3 +309,140 @@ export function describeSession(record: SessionRecord, options?: { fullPath?: bo
 export async function ensureDirectory(path: string): Promise<void> {
   await fs.mkdir(dirname(path), { recursive: true })
 }
+
+export async function updateSessionTitle(filePath: string, newTitle: string): Promise<void> {
+  const payload = await readJsonFile<any>(filePath)
+  if (!payload) {
+    throw new Error(`Session file not found or unreadable: ${filePath}`)
+  }
+  payload.title = newTitle
+  payload.time = payload.time || {}
+  payload.time.updated = Date.now()
+  await fs.writeFile(filePath, JSON.stringify(payload, null, 2), 'utf8')
+}
+
+export async function copySession(
+  session: SessionRecord,
+  targetProjectId: string,
+  root: string = DEFAULT_ROOT
+): Promise<SessionRecord> {
+  const payload = await readJsonFile<any>(session.filePath)
+  if (!payload) {
+    throw new Error(`Session file not found: ${session.filePath}`)
+  }
+
+  // Generate new session ID
+  const newSessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+  // Update payload for new session
+  payload.id = newSessionId
+  payload.projectID = targetProjectId
+  payload.time = payload.time || {}
+  payload.time.created = Date.now()
+  payload.time.updated = Date.now()
+
+  // Ensure target directory exists
+  const targetDir = join(root, 'storage', 'session', targetProjectId)
+  await ensureDirectory(join(targetDir, 'dummy'))
+
+  // Write new session file
+  const targetPath = join(targetDir, `${newSessionId}.json`)
+  await fs.writeFile(targetPath, JSON.stringify(payload, null, 2), 'utf8')
+
+  // Return new session record
+  return {
+    index: 0,
+    filePath: targetPath,
+    sessionId: newSessionId,
+    projectId: targetProjectId,
+    directory: session.directory,
+    title: session.title,
+    version: session.version,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  }
+}
+
+export async function moveSession(
+  session: SessionRecord,
+  targetProjectId: string,
+  root: string = DEFAULT_ROOT
+): Promise<SessionRecord> {
+  const payload = await readJsonFile<any>(session.filePath)
+  if (!payload) {
+    throw new Error(`Session file not found: ${session.filePath}`)
+  }
+
+  payload.projectID = targetProjectId
+  payload.time = payload.time || {}
+  payload.time.updated = Date.now()
+
+  // Ensure target directory exists
+  const targetDir = join(root, 'storage', 'session', targetProjectId)
+  await ensureDirectory(join(targetDir, 'dummy'))
+
+  // Write to new location
+  const targetPath = join(targetDir, `${session.sessionId}.json`)
+  await fs.writeFile(targetPath, JSON.stringify(payload, null, 2), 'utf8')
+
+  // Remove old file
+  await fs.unlink(session.filePath)
+
+  return {
+    ...session,
+    filePath: targetPath,
+    projectId: targetProjectId,
+    updatedAt: new Date()
+  }
+}
+
+export interface BatchOperationResult {
+  succeeded: { session: SessionRecord; newRecord: SessionRecord }[]
+  failed: { session: SessionRecord; error: string }[]
+}
+
+export async function copySessions(
+  sessions: SessionRecord[],
+  targetProjectId: string,
+  root?: string
+): Promise<BatchOperationResult> {
+  const succeeded: BatchOperationResult['succeeded'] = []
+  const failed: BatchOperationResult['failed'] = []
+
+  for (const session of sessions) {
+    try {
+      const newRecord = await copySession(session, targetProjectId, root)
+      succeeded.push({ session, newRecord })
+    } catch (error) {
+      failed.push({
+        session,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+  }
+
+  return { succeeded, failed }
+}
+
+export async function moveSessions(
+  sessions: SessionRecord[],
+  targetProjectId: string,
+  root?: string
+): Promise<BatchOperationResult> {
+  const succeeded: BatchOperationResult['succeeded'] = []
+  const failed: BatchOperationResult['failed'] = []
+
+  for (const session of sessions) {
+    try {
+      const newRecord = await moveSession(session, targetProjectId, root)
+      succeeded.push({ session, newRecord })
+    } catch (error) {
+      failed.push({
+        session,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+  }
+
+  return { succeeded, failed }
+}

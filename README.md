@@ -21,9 +21,12 @@ Terminal UI for inspecting, filtering, and pruning OpenCode metadata stored on d
 
 ## Features
 - List both OpenCode projects and sessions from a local metadata root.
-- Filter by “missing only”, bulk-select, and delete metadata safely.
+- Filter by "missing only", bulk-select, and delete metadata safely.
 - Jump from a project directly to its sessions and keep contextual filters.
 - Global search bar (`/` to focus, `Enter` to apply, `Esc` or `X` to clear).
+- Rename sessions inline (`Shift+R`) with title validation.
+- Move sessions between projects (`M`) preserving session ID.
+- Copy sessions to other projects (`P`) with new session ID generation.
 - Rich help overlay with live key hints (`?` or `H`).
 - Zero-install via `bunx` so even CI shells can run it without cloning.
 
@@ -59,7 +62,7 @@ bun run tui -- --root ~/.local/share/opencode
 Keyboard reference:
 - **Global**: `Tab`/`1`/`2` switch tabs, `/` search, `X` clear search, `R` reload, `Q` quit, `?` help.
 - **Projects**: `Space` toggle selection, `A` select all, `M` missing-only filter, `D` delete, `Enter` jump to Sessions.
-- **Sessions**: `Space` select, `S` toggle updated/created sort, `D` delete, `C` clear project filter, `Enter` details.
+- **Sessions**: `Space` select, `S` toggle sort, `D` delete, `Y` copy ID, `Shift+R` rename, `M` move to project, `P` copy to project, `C` clear filter.
 
 ## Development Workflow
 1. Install dependencies with `bun install`.

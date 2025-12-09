@@ -24,6 +24,12 @@ import {
   formatDisplayPath,
   loadProjectRecords,
   loadSessionRecords,
+  updateSessionTitle,
+  copySession,
+  moveSession,
+  copySessions,
+  moveSessions,
+  BatchOperationResult,
 } from "./lib/opencode-data"
 
 type TabKey = "projects" | "sessions"
@@ -137,6 +143,62 @@ const Columns = ({ children }: ChildrenProps) => {
 }
 
 const KeyChip = ({ k }: { k: string }) => <text fg={PALETTE.key}>[{k}]</text>
+
+type ProjectSelectorProps = {
+  projects: ProjectRecord[]
+  cursor: number
+  onCursorChange: (index: number) => void
+  onSelect: (project: ProjectRecord) => void
+  onCancel: () => void
+  operationMode: 'move' | 'copy'
+  sessionCount: number
+}
+
+const ProjectSelector = ({
+  projects,
+  cursor,
+  onCursorChange,
+  onSelect,
+  onCancel,
+  operationMode,
+  sessionCount
+}: ProjectSelectorProps) => {
+  const options: SelectOption[] = projects.map((p, idx) => ({
+    name: `${formatDisplayPath(p.worktree)} (${p.projectId})`,
+    description: p.state,
+    value: idx
+  }))
+
+  return (
+    <box
+      title={`Select Target Project (${operationMode} ${sessionCount} session${sessionCount > 1 ? 's' : ''})`}
+      style={{
+        border: true,
+        borderColor: operationMode === 'move' ? PALETTE.key : PALETTE.accent,
+        padding: 1,
+        position: 'absolute',
+        top: 5,
+        left: 5,
+        right: 5,
+        bottom: 5,
+        zIndex: 100
+      }}
+    >
+      <select
+        options={options}
+        selectedIndex={cursor}
+        onChange={onCursorChange}
+        onSelect={(idx) => {
+          const project = projects[idx]
+          if (project) onSelect(project)
+        }}
+        focused={true}
+        showScrollIndicator
+      />
+      <text fg={PALETTE.muted}>Enter to select, Esc to cancel</text>
+    </box>
+  )
+}
 
 const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function ProjectsPanel(
   { root, active, locked, searchQuery, onNotify, requestConfirm, onNavigateToSessions },
@@ -403,6 +465,12 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
   const [cursor, setCursor] = useState(0)
   const [selectedIndexes, setSelectedIndexes] = useState<Set<number>>(new Set())
   const [sortMode, setSortMode] = useState<"updated" | "created">("updated")
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const [isSelectingProject, setIsSelectingProject] = useState(false)
+  const [operationMode, setOperationMode] = useState<'move' | 'copy' | null>(null)
+  const [availableProjects, setAvailableProjects] = useState<ProjectRecord[]>([])
+  const [projectCursor, setProjectCursor] = useState(0)
 
   const visibleRecords = useMemo(() => {
     const sorted = [...records].sort((a, b) => {
@@ -540,9 +608,100 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
     })
   }, [selectedSessions, onNotify, requestConfirm, refreshRecords])
 
+  const executeRename = useCallback(async () => {
+    if (!currentSession || !renameValue.trim()) {
+      onNotify('Title cannot be empty', 'error')
+      setIsRenaming(false)
+      return
+    }
+    if (renameValue.length > 200) {
+      onNotify('Title too long (max 200 characters)', 'error')
+      return
+    }
+    try {
+      await updateSessionTitle(currentSession.filePath, renameValue.trim())
+      onNotify(`Renamed to "${renameValue.trim()}"`)
+      setIsRenaming(false)
+      setRenameValue('')
+      await refreshRecords(true)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      onNotify(`Rename failed: ${msg}`, 'error')
+    }
+  }, [currentSession, renameValue, onNotify, refreshRecords])
+
+  const executeTransfer = useCallback(async (
+    targetProject: ProjectRecord,
+    mode: 'move' | 'copy'
+  ) => {
+    setIsSelectingProject(false)
+    setOperationMode(null)
+
+    const operationFn = mode === 'move' ? moveSessions : copySessions
+    const result = await operationFn(selectedSessions, targetProject.projectId, root)
+
+    setSelectedIndexes(new Set())
+
+    const successCount = result.succeeded.length
+    const failCount = result.failed.length
+    const verb = mode === 'move' ? 'moved' : 'copied'
+
+    if (failCount === 0) {
+      onNotify(`Successfully ${verb} ${successCount} session(s) to ${targetProject.projectId}`)
+    } else {
+      onNotify(
+        `${verb} ${successCount} session(s), ${failCount} failed`,
+        'error'
+      )
+    }
+
+    await refreshRecords(true)
+  }, [selectedSessions, root, onNotify, refreshRecords])
+
   const handleKey = useCallback(
     (key: KeyEvent) => {
       if (!active || locked) {
+        return
+      }
+
+      // Handle project selection mode
+      if (isSelectingProject) {
+        if (key.name === 'escape') {
+          setIsSelectingProject(false)
+          setOperationMode(null)
+          return
+        }
+        if (key.name === 'return' || key.name === 'enter') {
+          const targetProject = availableProjects[projectCursor]
+          if (targetProject && operationMode) {
+            void executeTransfer(targetProject, operationMode)
+          }
+          return
+        }
+        // Let select component handle up/down via onCursorChange
+        return
+      }
+
+      // Handle rename mode - takes precedence over other key handling
+      if (isRenaming) {
+        if (key.name === 'escape') {
+          setIsRenaming(false)
+          setRenameValue('')
+          return
+        }
+        if (key.name === 'return' || key.name === 'enter') {
+          void executeRename()
+          return
+        }
+        if (key.name === 'backspace') {
+          setRenameValue(prev => prev.slice(0, -1))
+          return
+        }
+        const ch = key.sequence
+        if (ch && ch.length === 1 && !key.ctrl && !key.meta) {
+          setRenameValue(prev => prev + ch)
+          return
+        }
         return
       }
 
@@ -575,6 +734,51 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
         }
         return
       }
+      // Rename with Shift+R (uppercase R)
+      if (key.sequence === 'R') {
+        if (currentSession) {
+          setIsRenaming(true)
+          setRenameValue(currentSession.title || '')
+        }
+        return
+      }
+      // Move with M key
+      if (letter === 'm') {
+        if (selectedSessions.length === 0) {
+          onNotify('No sessions selected for move', 'error')
+          return
+        }
+        // Load projects for selection
+        loadProjectRecords({ root }).then(projects => {
+          // Filter out current project if filtering by project
+          const filtered = projectFilter
+            ? projects.filter(p => p.projectId !== projectFilter)
+            : projects
+          setAvailableProjects(filtered)
+          setProjectCursor(0)
+          setOperationMode('move')
+          setIsSelectingProject(true)
+        }).catch(err => {
+          onNotify(`Failed to load projects: ${err.message}`, 'error')
+        })
+        return
+      }
+      // Copy with P key
+      if (letter === 'p') {
+        if (selectedSessions.length === 0) {
+          onNotify('No sessions selected for copy', 'error')
+          return
+        }
+        loadProjectRecords({ root }).then(projects => {
+          setAvailableProjects(projects)
+          setProjectCursor(0)
+          setOperationMode('copy')
+          setIsSelectingProject(true)
+        }).catch(err => {
+          onNotify(`Failed to load projects: ${err.message}`, 'error')
+        })
+        return
+      }
       if (key.name === "return" || key.name === "enter") {
         if (currentSession) {
           const title = currentSession.title && currentSession.title.trim().length > 0 ? currentSession.title : currentSession.sessionId
@@ -583,7 +787,7 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
         return
       }
     },
-    [active, locked, currentSession, projectFilter, onClearFilter, onNotify, requestDeletion, toggleSelection],
+    [active, locked, currentSession, projectFilter, onClearFilter, onNotify, requestDeletion, toggleSelection, isRenaming, executeRename, isSelectingProject, availableProjects, projectCursor, operationMode, executeTransfer, selectedSessions, root],
   )
 
   useImperativeHandle(
@@ -610,8 +814,31 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
     >
       <box flexDirection="column" marginBottom={1}>
         <text>Filter: {projectFilter ? `project ${projectFilter}` : "none"} | Sort: {sortMode} | Search: {searchQuery || "(none)"} | Selected: {selectedIndexes.size}</text>
-        <text>Keys: Space select, S sort, D delete, Y copy ID, C clear filter, Enter details, Esc clear</text>
+        <text>Keys: Space select, S sort, D delete, Y copy ID, Shift+R rename, M move, P copy, C clear filter</text>
       </box>
+
+      {isRenaming ? (
+        <box style={{ border: true, borderColor: PALETTE.key, padding: 1, marginBottom: 1 }}>
+          <text>Rename: </text>
+          <text fg={PALETTE.key}>{renameValue}</text>
+          <text fg={PALETTE.muted}> (Enter confirm, Esc cancel)</text>
+        </box>
+      ) : null}
+
+      {isSelectingProject && operationMode ? (
+        <ProjectSelector
+          projects={availableProjects}
+          cursor={projectCursor}
+          onCursorChange={setProjectCursor}
+          onSelect={(project) => executeTransfer(project, operationMode)}
+          onCancel={() => {
+            setIsSelectingProject(false)
+            setOperationMode(null)
+          }}
+          operationMode={operationMode}
+          sessionCount={selectedSessions.length}
+        />
+      ) : null}
 
       {error ? (
         <text fg="red">{error}</text>
@@ -633,7 +860,7 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
                 onNotify(`Session ${title} [${session.sessionId}] → ${formatDisplayPath(session.directory)}`)
               }
             }}
-            focused={active && !locked}
+            focused={active && !locked && !isSelectingProject && !isRenaming}
             showScrollIndicator
             showDescription={false}
             wrapSelection={false}
@@ -779,6 +1006,18 @@ const HelpScreen = ({ onDismiss }: { onDismiss: () => void }) => {
             <Bullet>
               <text>Copy ID: </text>
               <KeyChip k="Y" />
+            </Bullet>
+            <Bullet>
+              <text>Rename: </text>
+              <KeyChip k="Shift+R" />
+            </Bullet>
+            <Bullet>
+              <text>Move to project: </text>
+              <KeyChip k="M" />
+            </Bullet>
+            <Bullet>
+              <text>Copy to project: </text>
+              <KeyChip k="P" />
             </Bullet>
             <Bullet>
               <text>Show details: </text>
