@@ -41,3 +41,6 @@ Thumbs.db
 # Python byproducts
 __pycache__/
 *.py[cod]
+
+# Agent/working context
+CONTEXT/

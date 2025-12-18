@@ -30,6 +30,13 @@ import {
   copySessions,
   moveSessions,
   BatchOperationResult,
+  TokenSummary,
+  TokenBreakdown,
+  AggregateTokenSummary,
+  computeSessionTokenSummary,
+  computeProjectTokenSummary,
+  computeGlobalTokenSummary,
+  clearTokenCache,
 } from "./lib/opencode-data"
 
 type TabKey = "projects" | "sessions"
@@ -64,6 +71,7 @@ type SessionsPanelProps = {
   locked: boolean
   projectFilter: string | null
   searchQuery: string
+  globalTokenSummary: AggregateTokenSummary | null
   onNotify: (message: string, level?: NotificationLevel) => void
   requestConfirm: (state: ConfirmState) => void
   onClearFilter: () => void
@@ -81,6 +89,46 @@ const PALETTE = {
   key: "#fbbf24", // amber
   muted: "#9ca3af", // gray
 } as const
+
+// Token formatting helpers
+function formatTokenCount(n: number): string {
+  if (n >= 1_000_000) {
+    return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
+  }
+  if (n >= 1_000) {
+    return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k`
+  }
+  return String(n)
+}
+
+function formatTokenBreakdown(tokens: TokenBreakdown): string[] {
+  return [
+    `Input: ${formatTokenCount(tokens.input)}`,
+    `Output: ${formatTokenCount(tokens.output)}`,
+    `Reasoning: ${formatTokenCount(tokens.reasoning)}`,
+    `Cache Read: ${formatTokenCount(tokens.cacheRead)}`,
+    `Cache Write: ${formatTokenCount(tokens.cacheWrite)}`,
+    `Total: ${formatTokenCount(tokens.total)}`,
+  ]
+}
+
+function formatTokenSummaryShort(summary: TokenSummary): string {
+  if (summary.kind === 'unknown') {
+    return '?'
+  }
+  return formatTokenCount(summary.tokens.total)
+}
+
+function formatAggregateSummaryShort(summary: AggregateTokenSummary): string {
+  if (summary.total.kind === 'unknown') {
+    return '?'
+  }
+  const base = formatTokenCount(summary.total.tokens.total)
+  if (summary.unknownSessions && summary.unknownSessions > 0) {
+    return `${base} (+${summary.unknownSessions} unknown)`
+  }
+  return base
+}
 
 function copyToClipboard(text: string): void {
   const cmd = process.platform === "darwin" ? "pbcopy" : "xclip -selection clipboard"
@@ -210,6 +258,9 @@ const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function Proje
   const [missingOnly, setMissingOnly] = useState(false)
   const [cursor, setCursor] = useState(0)
   const [selectedIndexes, setSelectedIndexes] = useState<Set<number>>(new Set())
+  // Token state for projects
+  const [allSessions, setAllSessions] = useState<SessionRecord[]>([])
+  const [currentProjectTokens, setCurrentProjectTokens] = useState<AggregateTokenSummary | null>(null)
 
   const missingCount = useMemo(() => records.filter((record) => record.state === "missing").length, [records])
 
@@ -279,6 +330,34 @@ const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function Proje
       return Math.min(prev, visibleRecords.length - 1)
     })
   }, [visibleRecords.length])
+
+  // Load all sessions once for token computation
+  useEffect(() => {
+    let cancelled = false
+    loadSessionRecords({ root }).then((sessions) => {
+      if (!cancelled) {
+        setAllSessions(sessions)
+      }
+    })
+    return () => { cancelled = true }
+  }, [root, records]) // Re-fetch when projects change (implies sessions may have changed)
+
+  // Compute token summary for current project
+  useEffect(() => {
+    setCurrentProjectTokens(null)
+    if (!currentRecord || allSessions.length === 0) {
+      return
+    }
+    let cancelled = false
+    computeProjectTokenSummary(currentRecord.projectId, allSessions, root).then((summary) => {
+      if (!cancelled) {
+        setCurrentProjectTokens(summary)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [currentRecord, allSessions, root])
 
   const toggleSelection = useCallback((record: ProjectRecord | undefined) => {
     if (!record) {
@@ -447,6 +526,19 @@ const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function Proje
               <text>Created: {formatDate(currentRecord.createdAt)}</text>
               <text>Path:</text>
               <text>{formatDisplayPath(currentRecord.worktree, { fullPath: true })}</text>
+              <box style={{ marginTop: 1 }}>
+                <text fg={PALETTE.accent}>Tokens: </text>
+                {currentProjectTokens?.total.kind === 'known' ? (
+                  <>
+                    <text fg={PALETTE.success}>Total: {formatTokenCount(currentProjectTokens.total.tokens.total)}</text>
+                    {currentProjectTokens.unknownSessions && currentProjectTokens.unknownSessions > 0 ? (
+                      <text fg={PALETTE.muted}> (+{currentProjectTokens.unknownSessions} unknown sessions)</text>
+                    ) : null}
+                  </>
+                ) : (
+                  <text fg={PALETTE.muted}>{currentProjectTokens ? '?' : 'loading...'}</text>
+                )}
+              </box>
             </box>
           ) : null}
         </box>
@@ -456,7 +548,7 @@ const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function Proje
 })
 
 const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function SessionsPanel(
-  { root, active, locked, projectFilter, searchQuery, onNotify, requestConfirm, onClearFilter },
+  { root, active, locked, projectFilter, searchQuery, globalTokenSummary, onNotify, requestConfirm, onClearFilter },
   ref,
 ) {
   const [records, setRecords] = useState<SessionRecord[]>([])
@@ -471,6 +563,9 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
   const [operationMode, setOperationMode] = useState<'move' | 'copy' | null>(null)
   const [availableProjects, setAvailableProjects] = useState<ProjectRecord[]>([])
   const [projectCursor, setProjectCursor] = useState(0)
+  // Token state
+  const [currentTokenSummary, setCurrentTokenSummary] = useState<TokenSummary | null>(null)
+  const [filteredTokenSummary, setFilteredTokenSummary] = useState<AggregateTokenSummary | null>(null)
 
   const visibleRecords = useMemo(() => {
     const sorted = [...records].sort((a, b) => {
@@ -547,6 +642,46 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
       return Math.min(prev, visibleRecords.length - 1)
     })
   }, [visibleRecords.length])
+
+  // Compute token summary for current session
+  useEffect(() => {
+    setCurrentTokenSummary(null)
+    if (!currentSession) {
+      return
+    }
+    let cancelled = false
+    computeSessionTokenSummary(currentSession, root).then((summary) => {
+      if (!cancelled) {
+        setCurrentTokenSummary(summary)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [currentSession, root])
+
+  // Compute filtered token summary (deferred to avoid UI freeze)
+  useEffect(() => {
+    setFilteredTokenSummary(null)
+    if (records.length === 0) {
+      return
+    }
+
+    let cancelled = false
+
+    // Compute filtered (project-only) if filter is active.
+    if (projectFilter) {
+      computeProjectTokenSummary(projectFilter, records, root).then((summary) => {
+        if (!cancelled) {
+          setFilteredTokenSummary(summary)
+        }
+      })
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [records, projectFilter, root])
 
   const toggleSelection = useCallback((session: SessionRecord | undefined) => {
     if (!session) {
@@ -875,6 +1010,33 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
               <text>Updated: {formatDate(currentSession.updatedAt || currentSession.createdAt)}</text>
               <text>Directory:</text>
               <text>{formatDisplayPath(currentSession.directory, { fullPath: true })}</text>
+              <box style={{ marginTop: 1 }}>
+                <text fg={PALETTE.accent}>Tokens: </text>
+                {currentTokenSummary?.kind === 'known' ? (
+                  <>
+                    <text>In: {formatTokenCount(currentTokenSummary.tokens.input)} </text>
+                    <text>Out: {formatTokenCount(currentTokenSummary.tokens.output)} </text>
+                    <text>Reason: {formatTokenCount(currentTokenSummary.tokens.reasoning)} </text>
+                    <text>Cache R: {formatTokenCount(currentTokenSummary.tokens.cacheRead)} </text>
+                    <text>Cache W: {formatTokenCount(currentTokenSummary.tokens.cacheWrite)} </text>
+                    <text fg={PALETTE.success}>Total: {formatTokenCount(currentTokenSummary.tokens.total)}</text>
+                  </>
+                ) : (
+                  <text fg={PALETTE.muted}>{currentTokenSummary ? '?' : 'loading...'}</text>
+                )}
+              </box>
+              {projectFilter && filteredTokenSummary ? (
+                <box style={{ marginTop: 1 }}>
+                  <text fg={PALETTE.info}>Filtered ({projectFilter}): </text>
+                  <text>{formatAggregateSummaryShort(filteredTokenSummary)}</text>
+                </box>
+              ) : null}
+              {globalTokenSummary ? (
+                <box>
+                  <text fg={PALETTE.primary}>Global: </text>
+                  <text>{formatAggregateSummaryShort(globalTokenSummary)}</text>
+                </box>
+              ) : null}
               <text fg={PALETTE.muted} style={{ marginTop: 1 }}>Press Y to copy ID</text>
             </box>
           ) : null}
@@ -1061,6 +1223,23 @@ const App = ({ root }: { root: string }) => {
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null)
   const [showHelp, setShowHelp] = useState(true)
   const [confirmBusy, setConfirmBusy] = useState(false)
+  // Global token state
+  const [globalTokens, setGlobalTokens] = useState<AggregateTokenSummary | null>(null)
+  const [tokenRefreshKey, setTokenRefreshKey] = useState(0)
+
+  // Load global tokens
+  useEffect(() => {
+    let cancelled = false
+    loadSessionRecords({ root }).then((sessions) => {
+      if (cancelled) return
+      return computeGlobalTokenSummary(sessions, root)
+    }).then((summary) => {
+      if (!cancelled && summary) {
+        setGlobalTokens(summary)
+      }
+    })
+    return () => { cancelled = true }
+  }, [root, tokenRefreshKey])
 
   const notify = useCallback((message: string, level: NotificationLevel = "info") => {
     setStatus(message)
@@ -1185,6 +1364,9 @@ const App = ({ root }: { root: string }) => {
       }
 
       if (letter === "r") {
+        // Clear token cache on reload
+        clearTokenCache()
+        setTokenRefreshKey((k) => k + 1)
         if (activeTab === "projects") {
           projectsRef.current?.refresh()
         } else {
@@ -1219,7 +1401,21 @@ const App = ({ root }: { root: string }) => {
   return (
     <box style={{ flexDirection: "column", padding: 1, flexGrow: 1 }}>
       <box flexDirection="column" marginBottom={1}>
-        <text fg="#a5b4fc">OpenCode Metadata Manager</text>
+        <box style={{ flexDirection: "row", gap: 2 }}>
+          <text fg="#a5b4fc">OpenCode Metadata Manager</text>
+          <text fg={PALETTE.muted}>|</text>
+          <text fg={PALETTE.accent}>Global Tokens: </text>
+          {globalTokens?.total.kind === 'known' ? (
+            <>
+              <text fg={PALETTE.success}>{formatTokenCount(globalTokens.total.tokens.total)}</text>
+              {globalTokens.unknownSessions && globalTokens.unknownSessions > 0 ? (
+                <text fg={PALETTE.muted}> (+{globalTokens.unknownSessions} unknown)</text>
+              ) : null}
+            </>
+          ) : (
+            <text fg={PALETTE.muted}>{globalTokens ? '?' : 'loading...'}</text>
+          )}
+        </box>
         <text>Root: {root}</text>
         <text>
           Tabs: [1] Projects [2] Sessions | Active: {activeTab} | Global: Tab switch, / search, X clear, R reload, Q quit, ? help
@@ -1254,6 +1450,7 @@ const App = ({ root }: { root: string }) => {
             locked={Boolean(confirmState) || showHelp}
             projectFilter={sessionFilter}
             searchQuery={activeTab === "sessions" ? searchQuery : ""}
+            globalTokenSummary={globalTokens}
             onNotify={notify}
             requestConfirm={requestConfirm}
             onClearFilter={clearSessionFilter}
@@ -1292,11 +1489,32 @@ function printUsage(): void {
 Usage: bun run tui [-- --root /path/to/storage]
 
 Key bindings:
-  Tab / 1 / 2  Switch between projects and sessions
-  R             Reload the active view
-  Q             Quit the application
-  Projects view: Space select, A select all, M toggle missing filter, D delete, Enter jump to sessions
-  Sessions view: Space select, D delete, C clear project filter, Enter show details
+  Tab / 1 / 2     Switch between projects and sessions
+  /               Start search (active tab)
+  X               Clear search
+  ? / H           Toggle help
+  R               Reload (and refresh token cache)
+  Q               Quit the application
+
+Projects view:
+  Space           Toggle selection
+  A               Select all (visible)
+  M               Toggle missing-only filter
+  D               Delete selected (with confirmation)
+  Enter           Jump to Sessions for project
+  Esc             Clear selection
+
+Sessions view:
+  Space           Toggle selection
+  S               Toggle sort (updated/created)
+  Shift+R         Rename session
+  M               Move selected sessions to project
+  P               Copy selected sessions to project
+  Y               Copy session ID to clipboard
+  C               Clear project filter
+  D               Delete selected (with confirmation)
+  Enter           Show details
+  Esc             Clear selection
 `)
 }
 

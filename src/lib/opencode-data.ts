@@ -4,6 +4,29 @@ import { homedir } from "node:os"
 
 export type ProjectState = "present" | "missing" | "unknown"
 
+// ========================
+// Token Types
+// ========================
+
+export type TokenBreakdown = {
+  input: number
+  output: number
+  reasoning: number
+  cacheRead: number
+  cacheWrite: number
+  total: number
+}
+
+export type TokenSummary =
+  | { kind: "known"; tokens: TokenBreakdown }
+  | { kind: "unknown"; reason: "missing" | "parse_error" | "no_messages" }
+
+export type AggregateTokenSummary = {
+  total: TokenSummary
+  knownOnly?: TokenBreakdown
+  unknownSessions?: number
+}
+
 export interface ProjectRecord {
   index: number
   bucket: ProjectBucket
@@ -186,11 +209,18 @@ export async function loadSessionRecords(options: SessionLoadOptions = {}): Prom
   const projectDirs = await fs.readdir(sessionRoot, { withFileTypes: true })
   const sessions: SessionRecord[] = []
 
+  // Some older OpenCode layouts may store message/part data under `storage/session/*`.
+  // Avoid treating those as project IDs when loading sessions.
+  const reservedSessionDirs = new Set(["message", "part"])
+
   for (const dirent of projectDirs) {
     if (!dirent.isDirectory()) {
       continue
     }
     const currentProjectId = dirent.name
+    if (reservedSessionDirs.has(currentProjectId)) {
+      continue
+    }
     if (options.projectId && options.projectId !== currentProjectId) {
       continue
     }
@@ -445,4 +475,260 @@ export async function moveSessions(
   }
 
   return { succeeded, failed }
+}
+
+// ========================
+// Token Aggregation
+// ========================
+
+// Cache: key includes root+project+session+updatedAtMs to avoid collisions.
+const tokenCache = new Map<string, TokenSummary>()
+
+function getCacheKey(session: SessionRecord, root: string): string {
+  const updatedMs = session.updatedAt?.getTime() ?? session.createdAt?.getTime() ?? 0
+  return JSON.stringify([root, session.projectId, session.sessionId, updatedMs])
+}
+
+export function clearTokenCache(): void {
+  tokenCache.clear()
+}
+
+function emptyBreakdown(): TokenBreakdown {
+  return {
+    input: 0,
+    output: 0,
+    reasoning: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    total: 0,
+  }
+}
+
+function addBreakdown(a: TokenBreakdown, b: TokenBreakdown): TokenBreakdown {
+  return {
+    input: a.input + b.input,
+    output: a.output + b.output,
+    reasoning: a.reasoning + b.reasoning,
+    cacheRead: a.cacheRead + b.cacheRead,
+    cacheWrite: a.cacheWrite + b.cacheWrite,
+    total: a.total + b.total,
+  }
+}
+
+interface MessageTokens {
+  input?: number
+  output?: number
+  reasoning?: number
+  cache?: {
+    read?: number
+    write?: number
+  }
+}
+
+interface MessagePayload {
+  role?: string
+  tokens?: MessageTokens | null
+}
+
+function asTokenNumber(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null
+  }
+  if (value < 0) {
+    return null
+  }
+  return value
+}
+
+function parseMessageTokens(tokens: MessageTokens | null | undefined): TokenBreakdown | null {
+  if (!tokens || typeof tokens !== "object") {
+    return null
+  }
+
+  const input = asTokenNumber(tokens.input)
+  const output = asTokenNumber(tokens.output)
+  const reasoning = asTokenNumber(tokens.reasoning)
+  const cacheRead = asTokenNumber(tokens.cache?.read)
+  const cacheWrite = asTokenNumber(tokens.cache?.write)
+
+  const hasAny = input !== null || output !== null || reasoning !== null || cacheRead !== null || cacheWrite !== null
+  if (!hasAny) {
+    return null
+  }
+
+  const breakdown = emptyBreakdown()
+  breakdown.input = input ?? 0
+  breakdown.output = output ?? 0
+  breakdown.reasoning = reasoning ?? 0
+  breakdown.cacheRead = cacheRead ?? 0
+  breakdown.cacheWrite = cacheWrite ?? 0
+  breakdown.total = breakdown.input + breakdown.output + breakdown.reasoning + breakdown.cacheRead + breakdown.cacheWrite
+  return breakdown
+}
+
+async function loadSessionMessagePaths(sessionId: string, root: string): Promise<string[] | null> {
+  // Primary path: storage/message/<sessionId>
+  const primaryPath = join(root, 'storage', 'message', sessionId)
+  if (await pathExists(primaryPath)) {
+    try {
+      const entries = await fs.readdir(primaryPath)
+      return entries
+        .filter((e) => e.endsWith('.json'))
+        .map((e) => join(primaryPath, e))
+    } catch {
+      return null
+    }
+  }
+
+  // Legacy fallback: storage/session/message/<sessionId>
+  const legacyPath = join(root, 'storage', 'session', 'message', sessionId)
+  if (await pathExists(legacyPath)) {
+    try {
+      const entries = await fs.readdir(legacyPath)
+      return entries
+        .filter((e) => e.endsWith('.json'))
+        .map((e) => join(legacyPath, e))
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
+export async function computeSessionTokenSummary(
+  session: SessionRecord,
+  root: string = DEFAULT_ROOT
+): Promise<TokenSummary> {
+  const normalizedRoot = resolve(root)
+  const cacheKey = getCacheKey(session, normalizedRoot)
+  const cached = tokenCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
+
+  const messagePaths = await loadSessionMessagePaths(session.sessionId, normalizedRoot)
+  if (messagePaths === null) {
+    const result: TokenSummary = { kind: 'unknown', reason: 'missing' }
+    tokenCache.set(cacheKey, result)
+    return result
+  }
+
+  if (messagePaths.length === 0) {
+    const result: TokenSummary = { kind: 'unknown', reason: 'no_messages' }
+    tokenCache.set(cacheKey, result)
+    return result
+  }
+
+  const breakdown = emptyBreakdown()
+  let foundAnyAssistant = false
+
+  for (const msgPath of messagePaths) {
+    const payload = await readJsonFile<MessagePayload>(msgPath)
+    if (!payload) {
+      const result: TokenSummary = { kind: "unknown", reason: "parse_error" }
+      tokenCache.set(cacheKey, result)
+      return result
+    }
+
+    // Only sum assistant messages (they have token telemetry)
+    if (payload.role !== "assistant") {
+      continue
+    }
+
+    foundAnyAssistant = true
+
+    const msgTokens = parseMessageTokens(payload.tokens)
+    if (!msgTokens) {
+      const result: TokenSummary = { kind: "unknown", reason: "missing" }
+      tokenCache.set(cacheKey, result)
+      return result
+    }
+
+    breakdown.input += msgTokens.input
+    breakdown.output += msgTokens.output
+    breakdown.reasoning += msgTokens.reasoning
+    breakdown.cacheRead += msgTokens.cacheRead
+    breakdown.cacheWrite += msgTokens.cacheWrite
+  }
+
+  if (!foundAnyAssistant) {
+    const result: TokenSummary = { kind: "unknown", reason: "no_messages" }
+    tokenCache.set(cacheKey, result)
+    return result
+  }
+
+  // Compute total
+  breakdown.total = breakdown.input + breakdown.output + breakdown.reasoning + breakdown.cacheRead + breakdown.cacheWrite
+
+  const result: TokenSummary = { kind: "known", tokens: breakdown }
+  tokenCache.set(cacheKey, result)
+  return result
+}
+
+export async function computeProjectTokenSummary(
+  projectId: string,
+  sessions: SessionRecord[],
+  root: string = DEFAULT_ROOT
+): Promise<AggregateTokenSummary> {
+  const projectSessions = sessions.filter((s) => s.projectId === projectId)
+  return computeAggregateTokenSummary(projectSessions, root)
+}
+
+export async function computeGlobalTokenSummary(
+  sessions: SessionRecord[],
+  root: string = DEFAULT_ROOT
+): Promise<AggregateTokenSummary> {
+  return computeAggregateTokenSummary(sessions, root)
+}
+
+async function computeAggregateTokenSummary(
+  sessions: SessionRecord[],
+  root: string
+): Promise<AggregateTokenSummary> {
+  if (sessions.length === 0) {
+    return {
+      total: { kind: 'unknown', reason: 'no_messages' },
+      knownOnly: emptyBreakdown(),
+      unknownSessions: 0,
+    }
+  }
+
+  const knownOnly = emptyBreakdown()
+  let unknownSessions = 0
+
+  const normalizedRoot = resolve(root)
+
+  for (const session of sessions) {
+    const summary = await computeSessionTokenSummary(session, normalizedRoot)
+    if (summary.kind === "known") {
+      knownOnly.input += summary.tokens.input
+      knownOnly.output += summary.tokens.output
+      knownOnly.reasoning += summary.tokens.reasoning
+      knownOnly.cacheRead += summary.tokens.cacheRead
+      knownOnly.cacheWrite += summary.tokens.cacheWrite
+      knownOnly.total += summary.tokens.total
+    } else {
+      unknownSessions += 1
+    }
+  }
+
+  // Recompute knownOnly.total (defensive)
+  knownOnly.total = knownOnly.input + knownOnly.output + knownOnly.reasoning + knownOnly.cacheRead + knownOnly.cacheWrite
+
+  // If all sessions are unknown, total is unknown
+  if (unknownSessions === sessions.length) {
+    return {
+      total: { kind: 'unknown', reason: 'missing' },
+      knownOnly: emptyBreakdown(),
+      unknownSessions,
+    }
+  }
+
+  // Otherwise, total is the known aggregate (even if some sessions are unknown)
+  return {
+    total: { kind: 'known', tokens: { ...knownOnly } },
+    knownOnly,
+    unknownSessions,
+  }
 }
