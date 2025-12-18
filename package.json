@@ -1,6 +1,6 @@
 {
   "name": "opencode-manager",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Terminal UI for inspecting OpenCode metadata stores.",
   "type": "module",
   "license": "MIT",
