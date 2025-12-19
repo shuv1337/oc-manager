@@ -31,9 +31,12 @@ Key Features
   - Missing-only toggle and bulk selection.
 - Sessions panel
   - Shows session title (or falls back to ID) in the list.
-  - Sort toggle (S) between “updated” and “created”.
+  - Sort toggle (S) between "updated" and "created".
   - Each row shows a timestamp snippet for the active sort (created/updated).
   - Details pane includes title, project ID, updated time, and directory.
+  - Rename sessions inline (Shift+R) with validation.
+  - Move sessions to another project (M) with project selector.
+  - Copy sessions to another project (P) with new session ID generation.
 - Projects ↔ Sessions workflow
   - Pressing Enter on a project jumps to the Sessions tab with the project filter set; status text confirms the active filter.
   - `C` clears the filter (and notifies the user) so global searches go back to all sessions.
@@ -55,13 +58,16 @@ Work Completed
 - Redesigned Help screen into two columns with color-coded sections and key chips; removed wall-of-text effect.
 - Added a small color palette and helper components (Section, Row, Bullet, Columns, KeyChip) to simplify consistent styling.
 - Implemented a global Search bar and input mode:
-  - “/” to start, Enter to apply, Esc or “X” to clear.
+  - "/" to start, Enter to apply, Esc or "X" to clear.
   - Projects: search `projectId` and `worktree`; Sessions: search `title`, `sessionId`, `directory`, `projectId`.
 - Sessions sorting & context:
-  - “S” toggles sort by `updated`/`created`.
+  - "S" toggles sort by `updated`/`created`.
   - Show per-row description with the relevant timestamp.
 - Fixed OpenTUI text rendering error by filtering whitespace-only raw text in layout helpers and by removing nested `<text>` nodes around key chips.
 - Verified via `bun run tui` (tmux socket creation is blocked in this environment, but direct run works).
+- Added session rename feature (Shift+R): inline text input with validation, updates JSON file, refreshes list.
+- Added session move feature (M): select target project, relocate session JSON, update projectID field.
+- Added session copy feature (P): select target project, create new session with generated ID, preserve original.
 
 How To Run
 ----------
@@ -71,7 +77,7 @@ How To Run
 - Keys:
   - Global: `Tab`/`1`/`2` switch tabs, `/` search, `X` clear search, `R` reload, `Q` quit, `?` help
   - Projects: `Space` select, `A` select all, `M` toggle missing, `D` delete, `Enter` view sessions
-  - Sessions: `Space` select, `S` sort, `D` delete, `C` clear project filter, `Enter` details
+  - Sessions: `Space` select, `S` sort, `D` delete, `Y` copy ID, `Shift+R` rename, `M` move, `P` copy, `C` clear filter
 - Optional tmux usage (when permitted): `tmux new -s opencode-tui 'bun run tui'`
 - CLI help: `bun run tui -- --help` (or `bunx opencode-manager -- --help`, or `manage_opencode_projects.py -- --help`) prints the built-in usage block with key bindings.
 

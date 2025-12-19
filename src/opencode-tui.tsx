@@ -24,6 +24,19 @@ import {
   formatDisplayPath,
   loadProjectRecords,
   loadSessionRecords,
+  updateSessionTitle,
+  copySession,
+  moveSession,
+  copySessions,
+  moveSessions,
+  BatchOperationResult,
+  TokenSummary,
+  TokenBreakdown,
+  AggregateTokenSummary,
+  computeSessionTokenSummary,
+  computeProjectTokenSummary,
+  computeGlobalTokenSummary,
+  clearTokenCache,
 } from "./lib/opencode-data"
 
 type TabKey = "projects" | "sessions"
@@ -58,6 +71,7 @@ type SessionsPanelProps = {
   locked: boolean
   projectFilter: string | null
   searchQuery: string
+  globalTokenSummary: AggregateTokenSummary | null
   onNotify: (message: string, level?: NotificationLevel) => void
   requestConfirm: (state: ConfirmState) => void
   onClearFilter: () => void
@@ -75,6 +89,46 @@ const PALETTE = {
   key: "#fbbf24", // amber
   muted: "#9ca3af", // gray
 } as const
+
+// Token formatting helpers
+function formatTokenCount(n: number): string {
+  if (n >= 1_000_000) {
+    return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
+  }
+  if (n >= 1_000) {
+    return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k`
+  }
+  return String(n)
+}
+
+function formatTokenBreakdown(tokens: TokenBreakdown): string[] {
+  return [
+    `Input: ${formatTokenCount(tokens.input)}`,
+    `Output: ${formatTokenCount(tokens.output)}`,
+    `Reasoning: ${formatTokenCount(tokens.reasoning)}`,
+    `Cache Read: ${formatTokenCount(tokens.cacheRead)}`,
+    `Cache Write: ${formatTokenCount(tokens.cacheWrite)}`,
+    `Total: ${formatTokenCount(tokens.total)}`,
+  ]
+}
+
+function formatTokenSummaryShort(summary: TokenSummary): string {
+  if (summary.kind === 'unknown') {
+    return '?'
+  }
+  return formatTokenCount(summary.tokens.total)
+}
+
+function formatAggregateSummaryShort(summary: AggregateTokenSummary): string {
+  if (summary.total.kind === 'unknown') {
+    return '?'
+  }
+  const base = formatTokenCount(summary.total.tokens.total)
+  if (summary.unknownSessions && summary.unknownSessions > 0) {
+    return `${base} (+${summary.unknownSessions} unknown)`
+  }
+  return base
+}
 
 function copyToClipboard(text: string): void {
   const cmd = process.platform === "darwin" ? "pbcopy" : "xclip -selection clipboard"
@@ -138,6 +192,62 @@ const Columns = ({ children }: ChildrenProps) => {
 
 const KeyChip = ({ k }: { k: string }) => <text fg={PALETTE.key}>[{k}]</text>
 
+type ProjectSelectorProps = {
+  projects: ProjectRecord[]
+  cursor: number
+  onCursorChange: (index: number) => void
+  onSelect: (project: ProjectRecord) => void
+  onCancel: () => void
+  operationMode: 'move' | 'copy'
+  sessionCount: number
+}
+
+const ProjectSelector = ({
+  projects,
+  cursor,
+  onCursorChange,
+  onSelect,
+  onCancel,
+  operationMode,
+  sessionCount
+}: ProjectSelectorProps) => {
+  const options: SelectOption[] = projects.map((p, idx) => ({
+    name: `${formatDisplayPath(p.worktree)} (${p.projectId})`,
+    description: p.state,
+    value: idx
+  }))
+
+  return (
+    <box
+      title={`Select Target Project (${operationMode} ${sessionCount} session${sessionCount > 1 ? 's' : ''})`}
+      style={{
+        border: true,
+        borderColor: operationMode === 'move' ? PALETTE.key : PALETTE.accent,
+        padding: 1,
+        position: 'absolute',
+        top: 5,
+        left: 5,
+        right: 5,
+        bottom: 5,
+        zIndex: 100
+      }}
+    >
+      <select
+        options={options}
+        selectedIndex={cursor}
+        onChange={onCursorChange}
+        onSelect={(idx) => {
+          const project = projects[idx]
+          if (project) onSelect(project)
+        }}
+        focused={true}
+        showScrollIndicator
+      />
+      <text fg={PALETTE.muted}>Enter to select, Esc to cancel</text>
+    </box>
+  )
+}
+
 const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function ProjectsPanel(
   { root, active, locked, searchQuery, onNotify, requestConfirm, onNavigateToSessions },
   ref,
@@ -148,6 +258,9 @@ const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function Proje
   const [missingOnly, setMissingOnly] = useState(false)
   const [cursor, setCursor] = useState(0)
   const [selectedIndexes, setSelectedIndexes] = useState<Set<number>>(new Set())
+  // Token state for projects
+  const [allSessions, setAllSessions] = useState<SessionRecord[]>([])
+  const [currentProjectTokens, setCurrentProjectTokens] = useState<AggregateTokenSummary | null>(null)
 
   const missingCount = useMemo(() => records.filter((record) => record.state === "missing").length, [records])
 
@@ -217,6 +330,34 @@ const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function Proje
       return Math.min(prev, visibleRecords.length - 1)
     })
   }, [visibleRecords.length])
+
+  // Load all sessions once for token computation
+  useEffect(() => {
+    let cancelled = false
+    loadSessionRecords({ root }).then((sessions) => {
+      if (!cancelled) {
+        setAllSessions(sessions)
+      }
+    })
+    return () => { cancelled = true }
+  }, [root, records]) // Re-fetch when projects change (implies sessions may have changed)
+
+  // Compute token summary for current project
+  useEffect(() => {
+    setCurrentProjectTokens(null)
+    if (!currentRecord || allSessions.length === 0) {
+      return
+    }
+    let cancelled = false
+    computeProjectTokenSummary(currentRecord.projectId, allSessions, root).then((summary) => {
+      if (!cancelled) {
+        setCurrentProjectTokens(summary)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [currentRecord, allSessions, root])
 
   const toggleSelection = useCallback((record: ProjectRecord | undefined) => {
     if (!record) {
@@ -385,6 +526,19 @@ const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function Proje
               <text>Created: {formatDate(currentRecord.createdAt)}</text>
               <text>Path:</text>
               <text>{formatDisplayPath(currentRecord.worktree, { fullPath: true })}</text>
+              <box style={{ marginTop: 1 }}>
+                <text fg={PALETTE.accent}>Tokens: </text>
+                {currentProjectTokens?.total.kind === 'known' ? (
+                  <>
+                    <text fg={PALETTE.success}>Total: {formatTokenCount(currentProjectTokens.total.tokens.total)}</text>
+                    {currentProjectTokens.unknownSessions && currentProjectTokens.unknownSessions > 0 ? (
+                      <text fg={PALETTE.muted}> (+{currentProjectTokens.unknownSessions} unknown sessions)</text>
+                    ) : null}
+                  </>
+                ) : (
+                  <text fg={PALETTE.muted}>{currentProjectTokens ? '?' : 'loading...'}</text>
+                )}
+              </box>
             </box>
           ) : null}
         </box>
@@ -394,7 +548,7 @@ const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function Proje
 })
 
 const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function SessionsPanel(
-  { root, active, locked, projectFilter, searchQuery, onNotify, requestConfirm, onClearFilter },
+  { root, active, locked, projectFilter, searchQuery, globalTokenSummary, onNotify, requestConfirm, onClearFilter },
   ref,
 ) {
   const [records, setRecords] = useState<SessionRecord[]>([])
@@ -403,6 +557,15 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
   const [cursor, setCursor] = useState(0)
   const [selectedIndexes, setSelectedIndexes] = useState<Set<number>>(new Set())
   const [sortMode, setSortMode] = useState<"updated" | "created">("updated")
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const [isSelectingProject, setIsSelectingProject] = useState(false)
+  const [operationMode, setOperationMode] = useState<'move' | 'copy' | null>(null)
+  const [availableProjects, setAvailableProjects] = useState<ProjectRecord[]>([])
+  const [projectCursor, setProjectCursor] = useState(0)
+  // Token state
+  const [currentTokenSummary, setCurrentTokenSummary] = useState<TokenSummary | null>(null)
+  const [filteredTokenSummary, setFilteredTokenSummary] = useState<AggregateTokenSummary | null>(null)
 
   const visibleRecords = useMemo(() => {
     const sorted = [...records].sort((a, b) => {
@@ -480,6 +643,46 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
     })
   }, [visibleRecords.length])
 
+  // Compute token summary for current session
+  useEffect(() => {
+    setCurrentTokenSummary(null)
+    if (!currentSession) {
+      return
+    }
+    let cancelled = false
+    computeSessionTokenSummary(currentSession, root).then((summary) => {
+      if (!cancelled) {
+        setCurrentTokenSummary(summary)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [currentSession, root])
+
+  // Compute filtered token summary (deferred to avoid UI freeze)
+  useEffect(() => {
+    setFilteredTokenSummary(null)
+    if (records.length === 0) {
+      return
+    }
+
+    let cancelled = false
+
+    // Compute filtered (project-only) if filter is active.
+    if (projectFilter) {
+      computeProjectTokenSummary(projectFilter, records, root).then((summary) => {
+        if (!cancelled) {
+          setFilteredTokenSummary(summary)
+        }
+      })
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [records, projectFilter, root])
+
   const toggleSelection = useCallback((session: SessionRecord | undefined) => {
     if (!session) {
       return
@@ -540,9 +743,100 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
     })
   }, [selectedSessions, onNotify, requestConfirm, refreshRecords])
 
+  const executeRename = useCallback(async () => {
+    if (!currentSession || !renameValue.trim()) {
+      onNotify('Title cannot be empty', 'error')
+      setIsRenaming(false)
+      return
+    }
+    if (renameValue.length > 200) {
+      onNotify('Title too long (max 200 characters)', 'error')
+      return
+    }
+    try {
+      await updateSessionTitle(currentSession.filePath, renameValue.trim())
+      onNotify(`Renamed to "${renameValue.trim()}"`)
+      setIsRenaming(false)
+      setRenameValue('')
+      await refreshRecords(true)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      onNotify(`Rename failed: ${msg}`, 'error')
+    }
+  }, [currentSession, renameValue, onNotify, refreshRecords])
+
+  const executeTransfer = useCallback(async (
+    targetProject: ProjectRecord,
+    mode: 'move' | 'copy'
+  ) => {
+    setIsSelectingProject(false)
+    setOperationMode(null)
+
+    const operationFn = mode === 'move' ? moveSessions : copySessions
+    const result = await operationFn(selectedSessions, targetProject.projectId, root)
+
+    setSelectedIndexes(new Set())
+
+    const successCount = result.succeeded.length
+    const failCount = result.failed.length
+    const verb = mode === 'move' ? 'moved' : 'copied'
+
+    if (failCount === 0) {
+      onNotify(`Successfully ${verb} ${successCount} session(s) to ${targetProject.projectId}`)
+    } else {
+      onNotify(
+        `${verb} ${successCount} session(s), ${failCount} failed`,
+        'error'
+      )
+    }
+
+    await refreshRecords(true)
+  }, [selectedSessions, root, onNotify, refreshRecords])
+
   const handleKey = useCallback(
     (key: KeyEvent) => {
       if (!active || locked) {
+        return
+      }
+
+      // Handle project selection mode
+      if (isSelectingProject) {
+        if (key.name === 'escape') {
+          setIsSelectingProject(false)
+          setOperationMode(null)
+          return
+        }
+        if (key.name === 'return' || key.name === 'enter') {
+          const targetProject = availableProjects[projectCursor]
+          if (targetProject && operationMode) {
+            void executeTransfer(targetProject, operationMode)
+          }
+          return
+        }
+        // Let select component handle up/down via onCursorChange
+        return
+      }
+
+      // Handle rename mode - takes precedence over other key handling
+      if (isRenaming) {
+        if (key.name === 'escape') {
+          setIsRenaming(false)
+          setRenameValue('')
+          return
+        }
+        if (key.name === 'return' || key.name === 'enter') {
+          void executeRename()
+          return
+        }
+        if (key.name === 'backspace') {
+          setRenameValue(prev => prev.slice(0, -1))
+          return
+        }
+        const ch = key.sequence
+        if (ch && ch.length === 1 && !key.ctrl && !key.meta) {
+          setRenameValue(prev => prev + ch)
+          return
+        }
         return
       }
 
@@ -575,6 +869,51 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
         }
         return
       }
+      // Rename with Shift+R (uppercase R)
+      if (key.sequence === 'R') {
+        if (currentSession) {
+          setIsRenaming(true)
+          setRenameValue(currentSession.title || '')
+        }
+        return
+      }
+      // Move with M key
+      if (letter === 'm') {
+        if (selectedSessions.length === 0) {
+          onNotify('No sessions selected for move', 'error')
+          return
+        }
+        // Load projects for selection
+        loadProjectRecords({ root }).then(projects => {
+          // Filter out current project if filtering by project
+          const filtered = projectFilter
+            ? projects.filter(p => p.projectId !== projectFilter)
+            : projects
+          setAvailableProjects(filtered)
+          setProjectCursor(0)
+          setOperationMode('move')
+          setIsSelectingProject(true)
+        }).catch(err => {
+          onNotify(`Failed to load projects: ${err.message}`, 'error')
+        })
+        return
+      }
+      // Copy with P key
+      if (letter === 'p') {
+        if (selectedSessions.length === 0) {
+          onNotify('No sessions selected for copy', 'error')
+          return
+        }
+        loadProjectRecords({ root }).then(projects => {
+          setAvailableProjects(projects)
+          setProjectCursor(0)
+          setOperationMode('copy')
+          setIsSelectingProject(true)
+        }).catch(err => {
+          onNotify(`Failed to load projects: ${err.message}`, 'error')
+        })
+        return
+      }
       if (key.name === "return" || key.name === "enter") {
         if (currentSession) {
           const title = currentSession.title && currentSession.title.trim().length > 0 ? currentSession.title : currentSession.sessionId
@@ -583,7 +922,7 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
         return
       }
     },
-    [active, locked, currentSession, projectFilter, onClearFilter, onNotify, requestDeletion, toggleSelection],
+    [active, locked, currentSession, projectFilter, onClearFilter, onNotify, requestDeletion, toggleSelection, isRenaming, executeRename, isSelectingProject, availableProjects, projectCursor, operationMode, executeTransfer, selectedSessions, root],
   )
 
   useImperativeHandle(
@@ -610,8 +949,31 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
     >
       <box flexDirection="column" marginBottom={1}>
         <text>Filter: {projectFilter ? `project ${projectFilter}` : "none"} | Sort: {sortMode} | Search: {searchQuery || "(none)"} | Selected: {selectedIndexes.size}</text>
-        <text>Keys: Space select, S sort, D delete, Y copy ID, C clear filter, Enter details, Esc clear</text>
+        <text>Keys: Space select, S sort, D delete, Y copy ID, Shift+R rename, M move, P copy, C clear filter</text>
       </box>
+
+      {isRenaming ? (
+        <box style={{ border: true, borderColor: PALETTE.key, padding: 1, marginBottom: 1 }}>
+          <text>Rename: </text>
+          <text fg={PALETTE.key}>{renameValue}</text>
+          <text fg={PALETTE.muted}> (Enter confirm, Esc cancel)</text>
+        </box>
+      ) : null}
+
+      {isSelectingProject && operationMode ? (
+        <ProjectSelector
+          projects={availableProjects}
+          cursor={projectCursor}
+          onCursorChange={setProjectCursor}
+          onSelect={(project) => executeTransfer(project, operationMode)}
+          onCancel={() => {
+            setIsSelectingProject(false)
+            setOperationMode(null)
+          }}
+          operationMode={operationMode}
+          sessionCount={selectedSessions.length}
+        />
+      ) : null}
 
       {error ? (
         <text fg="red">{error}</text>
@@ -633,7 +995,7 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
                 onNotify(`Session ${title} [${session.sessionId}] → ${formatDisplayPath(session.directory)}`)
               }
             }}
-            focused={active && !locked}
+            focused={active && !locked && !isSelectingProject && !isRenaming}
             showScrollIndicator
             showDescription={false}
             wrapSelection={false}
@@ -648,6 +1010,33 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
               <text>Updated: {formatDate(currentSession.updatedAt || currentSession.createdAt)}</text>
               <text>Directory:</text>
               <text>{formatDisplayPath(currentSession.directory, { fullPath: true })}</text>
+              <box style={{ marginTop: 1 }}>
+                <text fg={PALETTE.accent}>Tokens: </text>
+                {currentTokenSummary?.kind === 'known' ? (
+                  <>
+                    <text>In: {formatTokenCount(currentTokenSummary.tokens.input)} </text>
+                    <text>Out: {formatTokenCount(currentTokenSummary.tokens.output)} </text>
+                    <text>Reason: {formatTokenCount(currentTokenSummary.tokens.reasoning)} </text>
+                    <text>Cache R: {formatTokenCount(currentTokenSummary.tokens.cacheRead)} </text>
+                    <text>Cache W: {formatTokenCount(currentTokenSummary.tokens.cacheWrite)} </text>
+                    <text fg={PALETTE.success}>Total: {formatTokenCount(currentTokenSummary.tokens.total)}</text>
+                  </>
+                ) : (
+                  <text fg={PALETTE.muted}>{currentTokenSummary ? '?' : 'loading...'}</text>
+                )}
+              </box>
+              {projectFilter && filteredTokenSummary ? (
+                <box style={{ marginTop: 1 }}>
+                  <text fg={PALETTE.info}>Filtered ({projectFilter}): </text>
+                  <text>{formatAggregateSummaryShort(filteredTokenSummary)}</text>
+                </box>
+              ) : null}
+              {globalTokenSummary ? (
+                <box>
+                  <text fg={PALETTE.primary}>Global: </text>
+                  <text>{formatAggregateSummaryShort(globalTokenSummary)}</text>
+                </box>
+              ) : null}
               <text fg={PALETTE.muted} style={{ marginTop: 1 }}>Press Y to copy ID</text>
             </box>
           ) : null}
@@ -781,6 +1170,18 @@ const HelpScreen = ({ onDismiss }: { onDismiss: () => void }) => {
               <KeyChip k="Y" />
             </Bullet>
             <Bullet>
+              <text>Rename: </text>
+              <KeyChip k="Shift+R" />
+            </Bullet>
+            <Bullet>
+              <text>Move to project: </text>
+              <KeyChip k="M" />
+            </Bullet>
+            <Bullet>
+              <text>Copy to project: </text>
+              <KeyChip k="P" />
+            </Bullet>
+            <Bullet>
               <text>Show details: </text>
               <KeyChip k="Enter" />
             </Bullet>
@@ -822,6 +1223,23 @@ const App = ({ root }: { root: string }) => {
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null)
   const [showHelp, setShowHelp] = useState(true)
   const [confirmBusy, setConfirmBusy] = useState(false)
+  // Global token state
+  const [globalTokens, setGlobalTokens] = useState<AggregateTokenSummary | null>(null)
+  const [tokenRefreshKey, setTokenRefreshKey] = useState(0)
+
+  // Load global tokens
+  useEffect(() => {
+    let cancelled = false
+    loadSessionRecords({ root }).then((sessions) => {
+      if (cancelled) return
+      return computeGlobalTokenSummary(sessions, root)
+    }).then((summary) => {
+      if (!cancelled && summary) {
+        setGlobalTokens(summary)
+      }
+    })
+    return () => { cancelled = true }
+  }, [root, tokenRefreshKey])
 
   const notify = useCallback((message: string, level: NotificationLevel = "info") => {
     setStatus(message)
@@ -946,6 +1364,9 @@ const App = ({ root }: { root: string }) => {
       }
 
       if (letter === "r") {
+        // Clear token cache on reload
+        clearTokenCache()
+        setTokenRefreshKey((k) => k + 1)
         if (activeTab === "projects") {
           projectsRef.current?.refresh()
         } else {
@@ -980,7 +1401,21 @@ const App = ({ root }: { root: string }) => {
   return (
     <box style={{ flexDirection: "column", padding: 1, flexGrow: 1 }}>
       <box flexDirection="column" marginBottom={1}>
-        <text fg="#a5b4fc">OpenCode Metadata Manager</text>
+        <box style={{ flexDirection: "row", gap: 2 }}>
+          <text fg="#a5b4fc">OpenCode Metadata Manager</text>
+          <text fg={PALETTE.muted}>|</text>
+          <text fg={PALETTE.accent}>Global Tokens: </text>
+          {globalTokens?.total.kind === 'known' ? (
+            <>
+              <text fg={PALETTE.success}>{formatTokenCount(globalTokens.total.tokens.total)}</text>
+              {globalTokens.unknownSessions && globalTokens.unknownSessions > 0 ? (
+                <text fg={PALETTE.muted}> (+{globalTokens.unknownSessions} unknown)</text>
+              ) : null}
+            </>
+          ) : (
+            <text fg={PALETTE.muted}>{globalTokens ? '?' : 'loading...'}</text>
+          )}
+        </box>
         <text>Root: {root}</text>
         <text>
           Tabs: [1] Projects [2] Sessions | Active: {activeTab} | Global: Tab switch, / search, X clear, R reload, Q quit, ? help
@@ -1015,6 +1450,7 @@ const App = ({ root }: { root: string }) => {
             locked={Boolean(confirmState) || showHelp}
             projectFilter={sessionFilter}
             searchQuery={activeTab === "sessions" ? searchQuery : ""}
+            globalTokenSummary={globalTokens}
             onNotify={notify}
             requestConfirm={requestConfirm}
             onClearFilter={clearSessionFilter}
@@ -1053,11 +1489,32 @@ function printUsage(): void {
 Usage: bun run tui [-- --root /path/to/storage]
 
 Key bindings:
-  Tab / 1 / 2  Switch between projects and sessions
-  R             Reload the active view
-  Q             Quit the application
-  Projects view: Space select, A select all, M toggle missing filter, D delete, Enter jump to sessions
-  Sessions view: Space select, D delete, C clear project filter, Enter show details
+  Tab / 1 / 2     Switch between projects and sessions
+  /               Start search (active tab)
+  X               Clear search
+  ? / H           Toggle help
+  R               Reload (and refresh token cache)
+  Q               Quit the application
+
+Projects view:
+  Space           Toggle selection
+  A               Select all (visible)
+  M               Toggle missing-only filter
+  D               Delete selected (with confirmation)
+  Enter           Jump to Sessions for project
+  Esc             Clear selection
+
+Sessions view:
+  Space           Toggle selection
+  S               Toggle sort (updated/created)
+  Shift+R         Rename session
+  M               Move selected sessions to project
+  P               Copy selected sessions to project
+  Y               Copy session ID to clipboard
+  C               Clear project filter
+  D               Delete selected (with confirmation)
+  Enter           Show details
+  Esc             Clear selection
 `)
 }
 
