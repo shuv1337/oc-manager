@@ -27,6 +27,39 @@ export type AggregateTokenSummary = {
   unknownSessions?: number
 }
 
+// ========================
+// Chat History Types
+// ========================
+
+export type PartType = "text" | "subtask" | "tool" | "unknown"
+
+export interface ChatPart {
+  partId: string
+  messageId: string
+  type: PartType
+  text: string           // extracted human-readable content
+  toolName?: string      // for tool parts
+  toolStatus?: string    // "running" | "completed" | "error"
+}
+
+export type ChatRole = "user" | "assistant" | "unknown"
+
+export interface ChatMessage {
+  sessionId: string
+  messageId: string
+  role: ChatRole
+  createdAt: Date | null
+  parentId?: string         // for threading (assistant → user)
+  tokens?: TokenBreakdown   // only on assistant messages
+
+  // Parts are loaded lazily for performance.
+  parts: ChatPart[] | null
+
+  // Computed for display
+  previewText: string       // placeholder until parts load; then first N chars of combined parts
+  totalChars: number | null // null until parts load
+}
+
 export interface ProjectRecord {
   index: number
   bucket: ProjectBucket
@@ -566,7 +599,7 @@ function parseMessageTokens(tokens: MessageTokens | null | undefined): TokenBrea
   return breakdown
 }
 
-async function loadSessionMessagePaths(sessionId: string, root: string): Promise<string[] | null> {
+export async function loadSessionMessagePaths(sessionId: string, root: string): Promise<string[] | null> {
   // Primary path: storage/message/<sessionId>
   const primaryPath = join(root, 'storage', 'message', sessionId)
   if (await pathExists(primaryPath)) {
@@ -731,4 +764,350 @@ async function computeAggregateTokenSummary(
     knownOnly,
     unknownSessions,
   }
+}
+
+// ========================
+// Chat History Loading
+// ========================
+
+/**
+ * Load paths for part files associated with a message.
+ * Tries primary storage first, falls back to legacy layout.
+ *
+ * @returns Array of full paths to part JSON files, or null if neither directory exists.
+ */
+export async function loadMessagePartPaths(messageId: string, root: string): Promise<string[] | null> {
+  // Primary path: storage/part/<messageId>
+  const primaryPath = join(root, 'storage', 'part', messageId)
+  if (await pathExists(primaryPath)) {
+    try {
+      const entries = await fs.readdir(primaryPath)
+      return entries
+        .filter((e) => e.endsWith('.json'))
+        .map((e) => join(primaryPath, e))
+    } catch {
+      return null
+    }
+  }
+
+  // Legacy fallback: storage/session/part/<messageId>
+  const legacyPath = join(root, 'storage', 'session', 'part', messageId)
+  if (await pathExists(legacyPath)) {
+    try {
+      const entries = await fs.readdir(legacyPath)
+      return entries
+        .filter((e) => e.endsWith('.json'))
+        .map((e) => join(legacyPath, e))
+    } catch {
+      return null
+    }
+  }
+
+  return null
+}
+
+/**
+ * Safely convert a value to display text with optional truncation.
+ */
+function toDisplayText(value: unknown, maxChars = 10_000): string {
+  let full = ""
+  if (value == null) {
+    full = ""
+  } else if (typeof value === "string") {
+    full = value
+  } else {
+    try {
+      full = JSON.stringify(value, null, 2)
+    } catch {
+      full = String(value)
+    }
+  }
+
+  if (full.length <= maxChars) {
+    return full
+  }
+  return `${full.slice(0, maxChars)}\n[... truncated, ${full.length} chars total]`
+}
+
+/**
+ * Extract human-readable content from a part object.
+ */
+function extractPartContent(part: unknown): { text: string; toolName?: string; toolStatus?: string } {
+  const p = part as Record<string, unknown>
+  const type = typeof p.type === "string" ? p.type : "unknown"
+
+  switch (type) {
+    case "text":
+      return { text: toDisplayText(p.text) }
+
+    case "subtask":
+      return { text: toDisplayText(p.prompt ?? p.description ?? "") }
+
+    case "tool": {
+      const state = (p.state ?? {}) as Record<string, unknown>
+      const toolName = typeof p.tool === "string" ? p.tool : "unknown"
+      const status = typeof state.status === "string" ? state.status : "unknown"
+
+      // Prefer output when present; otherwise show a prompt-like input summary.
+      if ("output" in state) {
+        return { text: toDisplayText(state.output), toolName, toolStatus: status }
+      }
+
+      const input = (state.input ?? {}) as Record<string, unknown>
+      const prompt = input.prompt ?? `[tool:${toolName}]`
+      return { text: toDisplayText(prompt), toolName, toolStatus: status }
+    }
+
+    default:
+      // Unknown part type: attempt a safe JSON preview, then fall back to a label.
+      return { text: toDisplayText(part) || `[${type} part]` }
+  }
+}
+
+interface RawMessagePayload {
+  id?: string
+  sessionID?: string
+  role?: string
+  time?: { created?: number }
+  parentID?: string
+  tokens?: MessageTokens | null
+}
+
+/**
+ * Load chat message index for a session (metadata only, no parts).
+ * Returns an array of ChatMessage stubs with parts set to null.
+ */
+export async function loadSessionChatIndex(
+  sessionId: string,
+  root: string = DEFAULT_ROOT
+): Promise<ChatMessage[]> {
+  const normalizedRoot = resolve(root)
+  const messagePaths = await loadSessionMessagePaths(sessionId, normalizedRoot)
+
+  if (messagePaths === null || messagePaths.length === 0) {
+    return []
+  }
+
+  const messages: ChatMessage[] = []
+
+  for (const msgPath of messagePaths) {
+    const payload = await readJsonFile<RawMessagePayload>(msgPath)
+    if (!payload || !payload.id) {
+      // Skip malformed entries
+      continue
+    }
+
+    const role: ChatRole =
+      payload.role === "user" ? "user" :
+      payload.role === "assistant" ? "assistant" :
+      "unknown"
+
+    const createdAt = msToDate(payload.time?.created)
+
+    // Parse tokens for assistant messages
+    let tokens: TokenBreakdown | undefined
+    if (role === "assistant" && payload.tokens) {
+      const parsed = parseMessageTokens(payload.tokens)
+      if (parsed) {
+        tokens = parsed
+      }
+    }
+
+    messages.push({
+      sessionId,
+      messageId: payload.id,
+      role,
+      createdAt,
+      parentId: payload.parentID,
+      tokens,
+      parts: null,
+      previewText: "[loading...]",
+      totalChars: null,
+    })
+  }
+
+  // Sort by createdAt, with stable fallback on messageId for ties/missing timestamps
+  messages.sort((a, b) => {
+    const aTime = a.createdAt?.getTime() ?? 0
+    const bTime = b.createdAt?.getTime() ?? 0
+    if (aTime !== bTime) {
+      return aTime - bTime // ascending (oldest first)
+    }
+    return a.messageId.localeCompare(b.messageId)
+  })
+
+  return messages
+}
+
+/**
+ * Load all parts for a message and extract readable content.
+ */
+export async function loadMessageParts(
+  messageId: string,
+  root: string = DEFAULT_ROOT
+): Promise<ChatPart[]> {
+  const normalizedRoot = resolve(root)
+  const partPaths = await loadMessagePartPaths(messageId, normalizedRoot)
+
+  if (partPaths === null || partPaths.length === 0) {
+    return []
+  }
+
+  const parts: ChatPart[] = []
+
+  // Sort part paths by filename for deterministic order
+  const sortedPaths = [...partPaths].sort((a, b) => {
+    const aName = a.split('/').pop() ?? ''
+    const bName = b.split('/').pop() ?? ''
+    return aName.localeCompare(bName)
+  })
+
+  for (const partPath of sortedPaths) {
+    try {
+      const raw = await readJsonFile<Record<string, unknown>>(partPath)
+      if (!raw || !raw.id) {
+        // Skip malformed part files
+        continue
+      }
+
+      const partId = typeof raw.id === "string" ? raw.id : String(raw.id)
+      const typeRaw = typeof raw.type === "string" ? raw.type : "unknown"
+      const type: PartType =
+        typeRaw === "text" ? "text" :
+        typeRaw === "subtask" ? "subtask" :
+        typeRaw === "tool" ? "tool" :
+        "unknown"
+
+      const extracted = extractPartContent(raw)
+
+      parts.push({
+        partId,
+        messageId,
+        type,
+        text: extracted.text,
+        toolName: extracted.toolName,
+        toolStatus: extracted.toolStatus,
+      })
+    } catch {
+      // Skip files that fail to parse
+      continue
+    }
+  }
+
+  return parts
+}
+
+const PREVIEW_CHARS = 200
+
+/**
+ * Hydrate a ChatMessage with its parts, computing previewText and totalChars.
+ */
+export async function hydrateChatMessageParts(
+  message: ChatMessage,
+  root: string = DEFAULT_ROOT
+): Promise<ChatMessage> {
+  const parts = await loadMessageParts(message.messageId, root)
+
+  // Combine all part texts for total chars and preview
+  const combinedText = parts.map(p => p.text).join('\n\n')
+  const totalChars = combinedText.length
+
+  let previewText: string
+  if (combinedText.length === 0) {
+    previewText = "[no content]"
+  } else if (combinedText.length <= PREVIEW_CHARS) {
+    previewText = combinedText.replace(/\n/g, ' ').trim()
+  } else {
+    previewText = combinedText.slice(0, PREVIEW_CHARS).replace(/\n/g, ' ').trim() + "..."
+  }
+
+  return {
+    ...message,
+    parts,
+    previewText,
+    totalChars,
+  }
+}
+
+// ========================
+// Cross-Session Chat Search
+// ========================
+
+export interface ChatSearchResult {
+  sessionId: string
+  sessionTitle: string
+  projectId: string
+  messageId: string
+  role: ChatRole
+  matchedText: string       // snippet around the match
+  fullText: string          // full part text for display
+  partType: PartType
+  createdAt: Date | null
+}
+
+/**
+ * Search across all chat content in specified sessions.
+ * Returns matching messages with context snippets.
+ */
+export async function searchSessionsChat(
+  sessions: SessionRecord[],
+  query: string,
+  root: string = DEFAULT_ROOT,
+  options: { maxResults?: number } = {}
+): Promise<ChatSearchResult[]> {
+  const normalizedRoot = resolve(root)
+  const queryLower = query.toLowerCase().trim()
+  const maxResults = options.maxResults ?? 100
+  const results: ChatSearchResult[] = []
+
+  if (!queryLower) {
+    return results
+  }
+
+  for (const session of sessions) {
+    if (results.length >= maxResults) break
+
+    // Load messages for this session
+    const messages = await loadSessionChatIndex(session.sessionId, normalizedRoot)
+
+    for (const message of messages) {
+      if (results.length >= maxResults) break
+
+      // Load parts to search content
+      const parts = await loadMessageParts(message.messageId, normalizedRoot)
+
+      for (const part of parts) {
+        if (results.length >= maxResults) break
+
+        const textLower = part.text.toLowerCase()
+        const matchIndex = textLower.indexOf(queryLower)
+
+        if (matchIndex !== -1) {
+          // Create a snippet around the match
+          const snippetStart = Math.max(0, matchIndex - 50)
+          const snippetEnd = Math.min(part.text.length, matchIndex + query.length + 50)
+          let snippet = part.text.slice(snippetStart, snippetEnd)
+          if (snippetStart > 0) snippet = "..." + snippet
+          if (snippetEnd < part.text.length) snippet = snippet + "..."
+
+          results.push({
+            sessionId: session.sessionId,
+            sessionTitle: session.title || session.sessionId,
+            projectId: session.projectId,
+            messageId: message.messageId,
+            role: message.role,
+            matchedText: snippet.replace(/\n/g, ' '),
+            fullText: part.text,
+            partType: part.type,
+            createdAt: message.createdAt,
+          })
+
+          // Only one result per message to avoid duplicates
+          break
+        }
+      }
+    }
+  }
+
+  return results
 }
