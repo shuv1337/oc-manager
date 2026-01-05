@@ -37,7 +37,14 @@ import {
   computeProjectTokenSummary,
   computeGlobalTokenSummary,
   clearTokenCache,
+  ChatMessage,
+  ChatPart,
+  loadSessionChatIndex,
+  hydrateChatMessageParts,
+  ChatSearchResult,
+  searchSessionsChat,
 } from "./lib/opencode-data"
+import { Searcher } from "fast-fuzzy"
 
 type TabKey = "projects" | "sessions"
 
@@ -75,6 +82,7 @@ type SessionsPanelProps = {
   onNotify: (message: string, level?: NotificationLevel) => void
   requestConfirm: (state: ConfirmState) => void
   onClearFilter: () => void
+  onOpenChatViewer: (session: SessionRecord) => void
 }
 
 const MAX_CONFIRM_PREVIEW = 5
@@ -548,7 +556,7 @@ const ProjectsPanel = forwardRef<PanelHandle, ProjectsPanelProps>(function Proje
 })
 
 const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function SessionsPanel(
-  { root, active, locked, projectFilter, searchQuery, globalTokenSummary, onNotify, requestConfirm, onClearFilter },
+  { root, active, locked, projectFilter, searchQuery, globalTokenSummary, onNotify, requestConfirm, onClearFilter, onOpenChatViewer },
   ref,
 ) {
   const [records, setRecords] = useState<SessionRecord[]>([])
@@ -567,6 +575,28 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
   const [currentTokenSummary, setCurrentTokenSummary] = useState<TokenSummary | null>(null)
   const [filteredTokenSummary, setFilteredTokenSummary] = useState<AggregateTokenSummary | null>(null)
 
+  // Build fuzzy search candidates
+  const searchCandidates = useMemo(() => {
+    return records.map((session) => ({
+      session,
+      searchText: [
+        session.title || "",
+        session.sessionId,
+        session.directory || "",
+        session.projectId,
+      ].join(" ").replace(/\s+/g, " ").trim(),
+      updatedMs: (session.updatedAt ?? session.createdAt)?.getTime() ?? 0,
+      createdMs: session.createdAt?.getTime() ?? 0,
+    }))
+  }, [records])
+
+  // Build fuzzy searcher
+  const searcher = useMemo(() => {
+    return new Searcher(searchCandidates, {
+      keySelector: (c) => c.searchText,
+    })
+  }, [searchCandidates])
+
   const visibleRecords = useMemo(() => {
     const sorted = [...records].sort((a, b) => {
       const aDate = sortMode === "created" ? (a.createdAt ?? a.updatedAt) : (a.updatedAt ?? a.createdAt)
@@ -576,18 +606,36 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
       if (bTime !== aTime) return bTime - aTime
       return a.sessionId.localeCompare(b.sessionId)
     })
-    const q = searchQuery.trim().toLowerCase()
+    const q = searchQuery.trim()
     if (!q) return sorted
-    const tokens = q.split(/\s+/).filter(Boolean)
-    if (tokens.length === 0) return sorted
-    return sorted.filter((s) => {
-      const title = (s.title || "").toLowerCase()
-      const id = (s.sessionId || "").toLowerCase()
-      const dir = (s.directory || "").toLowerCase()
-      const proj = (s.projectId || "").toLowerCase()
-      return tokens.every((tok) => title.includes(tok) || id.includes(tok) || dir.includes(tok) || proj.includes(tok))
-    })
-  }, [records, sortMode, searchQuery])
+
+    // Use fuzzy search
+    const results = searcher.search(q, { returnMatchData: true })
+
+    // Sort by score (descending), then by timestamp (based on sortMode), then by sessionId
+    const matched = results
+      .map((match) => ({
+        session: match.item.session,
+        score: match.score,
+        timeMs: sortMode === "created" ? match.item.createdMs : match.item.updatedMs,
+      }))
+      .sort((a, b) => {
+        // Primary: score descending
+        if (b.score !== a.score) return b.score - a.score
+        // Secondary: time descending
+        if (b.timeMs !== a.timeMs) return b.timeMs - a.timeMs
+        // Tertiary: sessionId for stability
+        return a.session.sessionId.localeCompare(b.session.sessionId)
+      })
+      .map((m) => m.session)
+
+    // Cap results for very broad queries
+    const MAX_RESULTS = 200
+    if (matched.length > MAX_RESULTS) {
+      return matched.slice(0, MAX_RESULTS)
+    }
+    return matched
+  }, [records, sortMode, searchQuery, searcher])
   const currentSession = visibleRecords[cursor]
 
   const refreshRecords = useCallback(
@@ -914,6 +962,13 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
         })
         return
       }
+      // View chat history with V key
+      if (letter === 'v') {
+        if (currentSession) {
+          onOpenChatViewer(currentSession)
+        }
+        return
+      }
       if (key.name === "return" || key.name === "enter") {
         if (currentSession) {
           const title = currentSession.title && currentSession.title.trim().length > 0 ? currentSession.title : currentSession.sessionId
@@ -922,7 +977,7 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
         return
       }
     },
-    [active, locked, currentSession, projectFilter, onClearFilter, onNotify, requestDeletion, toggleSelection, isRenaming, executeRename, isSelectingProject, availableProjects, projectCursor, operationMode, executeTransfer, selectedSessions, root],
+    [active, locked, currentSession, projectFilter, onClearFilter, onNotify, requestDeletion, toggleSelection, isRenaming, executeRename, isSelectingProject, availableProjects, projectCursor, operationMode, executeTransfer, selectedSessions, root, onOpenChatViewer],
   )
 
   useImperativeHandle(
@@ -948,8 +1003,8 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
       }}
     >
       <box flexDirection="column" marginBottom={1}>
-        <text>Filter: {projectFilter ? `project ${projectFilter}` : "none"} | Sort: {sortMode} | Search: {searchQuery || "(none)"} | Selected: {selectedIndexes.size}</text>
-        <text>Keys: Space select, S sort, D delete, Y copy ID, Shift+R rename, M move, P copy, C clear filter</text>
+        <text>Filter: {projectFilter ? `project ${projectFilter}` : "none"} | Sort: {sortMode} | Search: {searchQuery ? `${searchQuery} (fuzzy)` : "(none)"} | Selected: {selectedIndexes.size}</text>
+        <text>Keys: Space select, S sort, D delete, Y copy ID, V view chat, F search chats, Shift+R rename, M move, P copy, C clear</text>
       </box>
 
       {isRenaming ? (
@@ -1170,6 +1225,16 @@ const HelpScreen = ({ onDismiss }: { onDismiss: () => void }) => {
               <KeyChip k="Y" />
             </Bullet>
             <Bullet>
+              <text fg={PALETTE.primary}>View chat: </text>
+              <KeyChip k="V" />
+              <text> — Open chat history</text>
+            </Bullet>
+            <Bullet>
+              <text fg={PALETTE.info}>Search chats: </text>
+              <KeyChip k="F" />
+              <text> — Search all chat content</text>
+            </Bullet>
+            <Bullet>
               <text>Rename: </text>
               <KeyChip k="Shift+R" />
             </Bullet>
@@ -1209,6 +1274,203 @@ const HelpScreen = ({ onDismiss }: { onDismiss: () => void }) => {
   )
 }
 
+type ChatViewerProps = {
+  session: SessionRecord
+  messages: ChatMessage[]
+  cursor: number
+  onCursorChange: (index: number) => void
+  loading: boolean
+  error: string | null
+  onClose: () => void
+  onHydrateMessage: (message: ChatMessage) => void
+  onCopyMessage: (message: ChatMessage) => void
+}
+
+const ChatViewer = ({
+  session,
+  messages,
+  cursor,
+  onCursorChange,
+  loading,
+  error,
+  onClose,
+  onHydrateMessage,
+  onCopyMessage,
+}: ChatViewerProps) => {
+  const currentMessage = messages[cursor]
+
+  // Trigger hydration for current message if parts not loaded
+  useEffect(() => {
+    if (currentMessage && currentMessage.parts === null) {
+      onHydrateMessage(currentMessage)
+    }
+  }, [currentMessage, onHydrateMessage])
+
+  const messageOptions: SelectOption[] = useMemo(() => {
+    return messages.map((msg, idx) => {
+      const roleLabel = msg.role === "user" ? "[user]" : msg.role === "assistant" ? "[asst]" : "[???]"
+      const timestamp = msg.createdAt
+        ? msg.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : "??:??"
+      const preview = msg.previewText.slice(0, 60) + (msg.previewText.length > 60 ? "..." : "")
+      return {
+        name: `${roleLabel} ${timestamp} - ${preview}`,
+        description: "",
+        value: idx,
+      }
+    })
+  }, [messages])
+
+  // Render parts for the current message
+  const renderMessageContent = () => {
+    if (!currentMessage) {
+      return <text fg={PALETTE.muted}>No message selected</text>
+    }
+
+    if (currentMessage.parts === null) {
+      return <text fg={PALETTE.muted}>Loading message content...</text>
+    }
+
+    if (currentMessage.parts.length === 0) {
+      return <text fg={PALETTE.muted}>[no content]</text>
+    }
+
+    return (
+      <box style={{ flexDirection: "column", gap: 1 }}>
+        {currentMessage.parts.map((part, idx) => (
+          <box key={part.partId} style={{ flexDirection: "column" }}>
+            {part.type === "tool" ? (
+              <text fg={PALETTE.accent}>
+                [tool: {part.toolName ?? "unknown"}] {part.toolStatus ?? ""}
+              </text>
+            ) : part.type === "subtask" ? (
+              <text fg={PALETTE.info}>[subtask]</text>
+            ) : null}
+            <text>{part.text.slice(0, 2000)}{part.text.length > 2000 ? "\n[... truncated]" : ""}</text>
+          </box>
+        ))}
+        {currentMessage.totalChars !== null && currentMessage.totalChars > 2000 ? (
+          <text fg={PALETTE.muted}>
+            Showing first 2000 chars of {currentMessage.totalChars} total
+          </text>
+        ) : null}
+      </box>
+    )
+  }
+
+  const title = session.title && session.title.trim() ? session.title : session.sessionId
+
+  return (
+    <box
+      title={`Chat: ${title} (READ-ONLY)`}
+      style={{
+        position: 'absolute',
+        top: 2,
+        left: 2,
+        right: 2,
+        bottom: 2,
+        border: true,
+        borderColor: PALETTE.primary,
+        flexDirection: 'column',
+        padding: 1,
+        zIndex: 200,
+      }}
+      backgroundColor="#1a1a2e"
+    >
+      {/* Header */}
+      <box style={{ flexDirection: "row", marginBottom: 1 }}>
+        <text fg={PALETTE.accent}>Session: </text>
+        <text>{session.sessionId}</text>
+        <text fg={PALETTE.muted}> | </text>
+        <text fg={PALETTE.accent}>Project: </text>
+        <text>{session.projectId}</text>
+        <text fg={PALETTE.muted}> | </text>
+        <text fg={PALETTE.accent}>Messages: </text>
+        <text>{messages.length}</text>
+        {loading ? <text fg={PALETTE.key}> (loading...)</text> : null}
+      </box>
+
+      {error ? (
+        <text fg={PALETTE.danger}>Error: {error}</text>
+      ) : messages.length === 0 && !loading ? (
+        <text fg={PALETTE.muted}>No messages found in this session.</text>
+      ) : (
+        <box style={{ flexDirection: "row", gap: 1, flexGrow: 1 }}>
+          {/* Left pane: message list */}
+          <box
+            style={{
+              border: true,
+              borderColor: PALETTE.muted,
+              flexGrow: 4,
+              flexDirection: "column",
+              padding: 1,
+            }}
+            title="Messages"
+          >
+            <select
+              options={messageOptions}
+              selectedIndex={cursor}
+              onChange={onCursorChange}
+              focused={true}
+              showScrollIndicator
+              wrapSelection={false}
+            />
+          </box>
+
+          {/* Right pane: message detail */}
+          <box
+            style={{
+              border: true,
+              borderColor: currentMessage?.role === "user" ? PALETTE.accent : PALETTE.primary,
+              flexGrow: 6,
+              flexDirection: "column",
+              padding: 1,
+              overflow: "hidden",
+            }}
+            title={currentMessage ? `${currentMessage.role} message` : "Details"}
+          >
+            {currentMessage ? (
+              <box style={{ flexDirection: "column" }}>
+                <box style={{ flexDirection: "row", marginBottom: 1 }}>
+                  <text fg={PALETTE.accent}>Role: </text>
+                  <text fg={currentMessage.role === "user" ? PALETTE.accent : PALETTE.primary}>
+                    {currentMessage.role}
+                  </text>
+                  <text fg={PALETTE.muted}> | </text>
+                  <text fg={PALETTE.accent}>Time: </text>
+                  <text>{formatDate(currentMessage.createdAt)}</text>
+                </box>
+                {currentMessage.tokens ? (
+                  <box style={{ flexDirection: "row", marginBottom: 1 }}>
+                    <text fg={PALETTE.info}>Tokens: </text>
+                    <text>
+                      In: {formatTokenCount(currentMessage.tokens.input)} |
+                      Out: {formatTokenCount(currentMessage.tokens.output)} |
+                      Total: {formatTokenCount(currentMessage.tokens.total)}
+                    </text>
+                  </box>
+                ) : null}
+                <box style={{ flexGrow: 1, overflow: "hidden" }}>
+                  {renderMessageContent()}
+                </box>
+              </box>
+            ) : (
+              <text fg={PALETTE.muted}>Select a message to view details</text>
+            )}
+          </box>
+        </box>
+      )}
+
+      {/* Footer */}
+      <box style={{ marginTop: 1 }}>
+        <text fg={PALETTE.muted}>
+          Esc close | Up/Down navigate | PgUp/PgDn jump | Y copy message
+        </text>
+      </box>
+    </box>
+  )
+}
+
 const App = ({ root }: { root: string }) => {
   const renderer = useRenderer()
   const projectsRef = useRef<PanelHandle>(null)
@@ -1227,6 +1489,23 @@ const App = ({ root }: { root: string }) => {
   const [globalTokens, setGlobalTokens] = useState<AggregateTokenSummary | null>(null)
   const [tokenRefreshKey, setTokenRefreshKey] = useState(0)
 
+  // Chat viewer state
+  const [chatViewerOpen, setChatViewerOpen] = useState(false)
+  const [chatSession, setChatSession] = useState<SessionRecord | null>(null)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatCursor, setChatCursor] = useState(0)
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatError, setChatError] = useState<string | null>(null)
+  const [chatPartsCache, setChatPartsCache] = useState<Map<string, ChatMessage>>(new Map())
+
+  // Chat search overlay state
+  const [chatSearchOpen, setChatSearchOpen] = useState(false)
+  const [chatSearchQuery, setChatSearchQuery] = useState("")
+  const [chatSearchResults, setChatSearchResults] = useState<ChatSearchResult[]>([])
+  const [chatSearchCursor, setChatSearchCursor] = useState(0)
+  const [chatSearching, setChatSearching] = useState(false)
+  const [allSessions, setAllSessions] = useState<SessionRecord[]>([])
+
   // Load global tokens
   useEffect(() => {
     let cancelled = false
@@ -1236,6 +1515,17 @@ const App = ({ root }: { root: string }) => {
     }).then((summary) => {
       if (!cancelled && summary) {
         setGlobalTokens(summary)
+      }
+    })
+    return () => { cancelled = true }
+  }, [root, tokenRefreshKey])
+
+  // Load all sessions for chat search
+  useEffect(() => {
+    let cancelled = false
+    loadSessionRecords({ root }).then((sessions) => {
+      if (!cancelled) {
+        setAllSessions(sessions)
       }
     })
     return () => { cancelled = true }
@@ -1281,6 +1571,147 @@ const App = ({ root }: { root: string }) => {
     })
   }, [])
 
+  // Chat viewer controls
+  const openChatViewer = useCallback(async (session: SessionRecord) => {
+    setChatViewerOpen(true)
+    setChatSession(session)
+    setChatMessages([])
+    setChatCursor(0)
+    setChatLoading(true)
+    setChatError(null)
+    setChatPartsCache(new Map())
+
+    try {
+      const messages = await loadSessionChatIndex(session.sessionId, root)
+      setChatMessages(messages)
+      if (messages.length > 0) {
+        setChatCursor(0)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setChatError(msg)
+    } finally {
+      setChatLoading(false)
+    }
+  }, [root])
+
+  const closeChatViewer = useCallback(() => {
+    setChatViewerOpen(false)
+    setChatSession(null)
+    setChatMessages([])
+    setChatCursor(0)
+    setChatLoading(false)
+    setChatError(null)
+    setChatPartsCache(new Map())
+  }, [])
+
+  const hydrateMessage = useCallback(async (message: ChatMessage) => {
+    // Check cache first
+    const cached = chatPartsCache.get(message.messageId)
+    if (cached) {
+      setChatMessages(prev => prev.map(m =>
+        m.messageId === message.messageId ? cached : m
+      ))
+      return
+    }
+
+    try {
+      const hydrated = await hydrateChatMessageParts(message, root)
+      setChatPartsCache(prev => new Map(prev).set(message.messageId, hydrated))
+      setChatMessages(prev => prev.map(m =>
+        m.messageId === message.messageId ? hydrated : m
+      ))
+    } catch (err) {
+      // On error, set a placeholder
+      const errorMsg: ChatMessage = {
+        ...message,
+        parts: [],
+        previewText: "[failed to load]",
+        totalChars: 0,
+      }
+      setChatMessages(prev => prev.map(m =>
+        m.messageId === message.messageId ? errorMsg : m
+      ))
+    }
+  }, [root, chatPartsCache])
+
+  const copyChatMessage = useCallback((message: ChatMessage) => {
+    if (!message.parts || message.parts.length === 0) {
+      notify("No content to copy", "error")
+      return
+    }
+    const text = message.parts.map(p => p.text).join('\n\n')
+    copyToClipboard(text)
+    notify(`Copied ${text.length} chars to clipboard`)
+  }, [notify])
+
+  // Chat search controls
+  const openChatSearch = useCallback(() => {
+    setChatSearchOpen(true)
+    setChatSearchQuery("")
+    setChatSearchResults([])
+    setChatSearchCursor(0)
+    setChatSearching(false)
+  }, [])
+
+  const closeChatSearch = useCallback(() => {
+    setChatSearchOpen(false)
+    setChatSearchQuery("")
+    setChatSearchResults([])
+    setChatSearchCursor(0)
+    setChatSearching(false)
+  }, [])
+
+  const executeChatSearch = useCallback(async () => {
+    if (!chatSearchQuery.trim()) {
+      setChatSearchResults([])
+      return
+    }
+
+    setChatSearching(true)
+
+    try {
+      // Filter to project if filter is active
+      const sessionsToSearch = sessionFilter
+        ? allSessions.filter(s => s.projectId === sessionFilter)
+        : allSessions
+
+      const results = await searchSessionsChat(sessionsToSearch, chatSearchQuery, root, { maxResults: 100 })
+      setChatSearchResults(results)
+      setChatSearchCursor(0)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      notify(`Search failed: ${msg}`, "error")
+      setChatSearchResults([])
+    } finally {
+      setChatSearching(false)
+    }
+  }, [chatSearchQuery, sessionFilter, allSessions, root, notify])
+
+  const handleChatSearchResult = useCallback(async (result: ChatSearchResult) => {
+    // Find the session and open chat viewer at the matching message
+    const session = allSessions.find(s => s.sessionId === result.sessionId)
+    if (!session) {
+      notify("Session not found", "error")
+      return
+    }
+
+    closeChatSearch()
+    await openChatViewer(session)
+
+    // Find the message index in the chat viewer
+    // Wait a bit for the chat viewer to load
+    setTimeout(() => {
+      setChatMessages(prev => {
+        const idx = prev.findIndex(m => m.messageId === result.messageId)
+        if (idx !== -1) {
+          setChatCursor(idx)
+        }
+        return prev
+      })
+    }, 100)
+  }, [allSessions, closeChatSearch, openChatViewer, notify])
+
   const handleGlobalKey = useCallback(
     (key: KeyEvent) => {
       // Search input mode takes precedence
@@ -1313,6 +1744,89 @@ const App = ({ root }: { root: string }) => {
         }
         if (key.name === "return" || key.name === "enter" || letter === "y") {
           void executeConfirm()
+          return
+        }
+        return
+      }
+
+      // Chat viewer takes precedence when open
+      if (chatViewerOpen) {
+        const letter = key.sequence?.toLowerCase()
+        if (key.name === "escape") {
+          closeChatViewer()
+          return
+        }
+        if (key.name === "up") {
+          setChatCursor(prev => Math.max(0, prev - 1))
+          return
+        }
+        if (key.name === "down") {
+          setChatCursor(prev => Math.min(chatMessages.length - 1, prev + 1))
+          return
+        }
+        if (key.name === "pageup" || (key.ctrl && letter === "u")) {
+          setChatCursor(prev => Math.max(0, prev - 10))
+          return
+        }
+        if (key.name === "pagedown" || (key.ctrl && letter === "d")) {
+          setChatCursor(prev => Math.min(chatMessages.length - 1, prev + 10))
+          return
+        }
+        if (key.name === "home") {
+          setChatCursor(0)
+          return
+        }
+        if (key.name === "end") {
+          setChatCursor(chatMessages.length - 1)
+          return
+        }
+        if (letter === "y") {
+          const msg = chatMessages[chatCursor]
+          if (msg) {
+            copyChatMessage(msg)
+          }
+          return
+        }
+        // Block other keys while viewer is open
+        return
+      }
+
+      // Chat search overlay takes precedence when open
+      if (chatSearchOpen) {
+        const letter = key.sequence?.toLowerCase()
+        if (key.name === "escape") {
+          closeChatSearch()
+          return
+        }
+        if (key.name === "return" || key.name === "enter") {
+          if (chatSearchResults.length > 0) {
+            // Select current result
+            const result = chatSearchResults[chatSearchCursor]
+            if (result) {
+              void handleChatSearchResult(result)
+            }
+          } else {
+            // Execute search
+            void executeChatSearch()
+          }
+          return
+        }
+        if (key.name === "backspace") {
+          setChatSearchQuery(prev => prev.slice(0, -1))
+          return
+        }
+        if (key.name === "up") {
+          setChatSearchCursor(prev => Math.max(0, prev - 1))
+          return
+        }
+        if (key.name === "down") {
+          setChatSearchCursor(prev => Math.min(chatSearchResults.length - 1, prev + 1))
+          return
+        }
+        // Type characters
+        const ch = key.sequence
+        if (ch && ch.length === 1 && !key.ctrl && !key.meta) {
+          setChatSearchQuery(prev => prev + ch)
           return
         }
         return
@@ -1376,10 +1890,16 @@ const App = ({ root }: { root: string }) => {
         return
       }
 
+      // Open chat search with F key (Sessions tab only)
+      if (letter === "f" && activeTab === "sessions") {
+        openChatSearch()
+        return
+      }
+
       const handler = activeTab === "projects" ? projectsRef.current : sessionsRef.current
       handler?.handleKey(key)
     },
-    [activeTab, cancelConfirm, confirmState, executeConfirm, notify, renderer, searchActive, searchQuery, showHelp, switchTab],
+    [activeTab, cancelConfirm, confirmState, executeConfirm, notify, renderer, searchActive, searchQuery, showHelp, switchTab, chatViewerOpen, chatMessages, chatCursor, closeChatViewer, copyChatMessage, chatSearchOpen, chatSearchResults, chatSearchCursor, closeChatSearch, executeChatSearch, handleChatSearchResult, openChatSearch],
   )
 
   useKeyboard(handleGlobalKey)
@@ -1447,16 +1967,140 @@ const App = ({ root }: { root: string }) => {
             ref={sessionsRef}
             root={root}
             active={activeTab === "sessions"}
-            locked={Boolean(confirmState) || showHelp}
+            locked={Boolean(confirmState) || showHelp || chatViewerOpen || chatSearchOpen}
             projectFilter={sessionFilter}
             searchQuery={activeTab === "sessions" ? searchQuery : ""}
             globalTokenSummary={globalTokens}
             onNotify={notify}
             requestConfirm={requestConfirm}
             onClearFilter={clearSessionFilter}
+            onOpenChatViewer={openChatViewer}
           />
         </box>
       )}
+
+      {/* Chat Viewer Overlay */}
+      {chatViewerOpen && chatSession ? (
+        <ChatViewer
+          session={chatSession}
+          messages={chatMessages}
+          cursor={chatCursor}
+          onCursorChange={setChatCursor}
+          loading={chatLoading}
+          error={chatError}
+          onClose={closeChatViewer}
+          onHydrateMessage={hydrateMessage}
+          onCopyMessage={copyChatMessage}
+        />
+      ) : null}
+
+      {/* Chat Search Overlay */}
+      {chatSearchOpen ? (
+        <box
+          title={`Search Chat Content ${sessionFilter ? `(project: ${sessionFilter})` : "(all sessions)"}`}
+          style={{
+            position: 'absolute',
+            top: 2,
+            left: 2,
+            right: 2,
+            bottom: 2,
+            border: true,
+            borderColor: PALETTE.info,
+            flexDirection: 'column',
+            padding: 1,
+            zIndex: 200,
+          }}
+          backgroundColor="#1a1a2e"
+        >
+          {/* Search input */}
+          <box style={{ flexDirection: "row", marginBottom: 1 }}>
+            <text fg={PALETTE.accent}>Search: </text>
+            <text fg={PALETTE.key}>{chatSearchQuery}</text>
+            <text fg={PALETTE.muted}>_</text>
+            {chatSearching ? <text fg={PALETTE.info}> (searching...)</text> : null}
+          </box>
+
+          <box style={{ marginBottom: 1 }}>
+            <text fg={PALETTE.muted}>
+              Searching {sessionFilter ? allSessions.filter(s => s.projectId === sessionFilter).length : allSessions.length} sessions | Found: {chatSearchResults.length} matches
+            </text>
+          </box>
+
+          {chatSearchResults.length === 0 && chatSearchQuery && !chatSearching ? (
+            <text fg={PALETTE.muted}>No results found. Try a different search term.</text>
+          ) : chatSearchResults.length > 0 ? (
+            <box style={{ flexDirection: "row", gap: 1, flexGrow: 1 }}>
+              {/* Results list */}
+              <box
+                style={{
+                  border: true,
+                  borderColor: PALETTE.muted,
+                  flexGrow: 4,
+                  flexDirection: "column",
+                  padding: 1,
+                }}
+                title="Results"
+              >
+                <select
+                  options={chatSearchResults.map((r, idx) => ({
+                    name: `${r.sessionTitle.slice(0, 25)} | ${r.role === "user" ? "[user]" : "[asst]"} ${r.matchedText.slice(0, 40)}...`,
+                    description: "",
+                    value: idx,
+                  }))}
+                  selectedIndex={chatSearchCursor}
+                  onChange={setChatSearchCursor}
+                  focused={true}
+                  showScrollIndicator
+                  wrapSelection={false}
+                />
+              </box>
+
+              {/* Preview pane */}
+              <box
+                style={{
+                  border: true,
+                  borderColor: chatSearchResults[chatSearchCursor]?.role === "user" ? PALETTE.accent : PALETTE.primary,
+                  flexGrow: 6,
+                  flexDirection: "column",
+                  padding: 1,
+                  overflow: "hidden",
+                }}
+                title={chatSearchResults[chatSearchCursor] ? `${chatSearchResults[chatSearchCursor].role} message` : "Preview"}
+              >
+                {chatSearchResults[chatSearchCursor] ? (
+                  <box style={{ flexDirection: "column" }}>
+                    <box style={{ flexDirection: "row", marginBottom: 1 }}>
+                      <text fg={PALETTE.accent}>Session: </text>
+                      <text>{chatSearchResults[chatSearchCursor].sessionTitle}</text>
+                    </box>
+                    <box style={{ flexDirection: "row", marginBottom: 1 }}>
+                      <text fg={PALETTE.accent}>Time: </text>
+                      <text>{formatDate(chatSearchResults[chatSearchCursor].createdAt)}</text>
+                      <text fg={PALETTE.muted}> | </text>
+                      <text fg={PALETTE.accent}>Type: </text>
+                      <text>{chatSearchResults[chatSearchCursor].partType}</text>
+                    </box>
+                    <box style={{ flexGrow: 1 }}>
+                      <text>{chatSearchResults[chatSearchCursor].fullText.slice(0, 1500)}{chatSearchResults[chatSearchCursor].fullText.length > 1500 ? "\n[... truncated]" : ""}</text>
+                    </box>
+                  </box>
+                ) : (
+                  <text fg={PALETTE.muted}>Select a result to preview</text>
+                )}
+              </box>
+            </box>
+          ) : (
+            <text fg={PALETTE.muted}>Type a search query and press Enter to search chat content.</text>
+          )}
+
+          {/* Footer */}
+          <box style={{ marginTop: 1 }}>
+            <text fg={PALETTE.muted}>
+              Type query, Enter to search | Esc close | Up/Down navigate | Enter on result opens chat
+            </text>
+          </box>
+        </box>
+      ) : null}
 
       <StatusBar status={status} level={statusLevel} />
       {confirmState ? <ConfirmBar state={confirmState} busy={confirmBusy} /> : null}
@@ -1507,6 +2151,8 @@ Projects view:
 Sessions view:
   Space           Toggle selection
   S               Toggle sort (updated/created)
+  V               View chat history for selected session
+  F               Search across all chat content in sessions
   Shift+R         Rename session
   M               Move selected sessions to project
   P               Copy selected sessions to project
@@ -1515,6 +2161,19 @@ Sessions view:
   D               Delete selected (with confirmation)
   Enter           Show details
   Esc             Clear selection
+
+Chat search (when open):
+  Type            Enter search query
+  Enter           Search / open selected result
+  Up/Down         Navigate results
+  Esc             Close search
+
+Chat viewer (when open):
+  Esc             Close viewer
+  Up/Down         Navigate messages
+  PgUp/PgDn       Jump 10 messages
+  Home/End        Jump to first/last message
+  Y               Copy message content to clipboard
 `)
 }
 
