@@ -575,7 +575,8 @@ When documentation and code conflict, resolve using this priority:
 ### 2b.1 TUI Help Output
 - [ ] Read `src/tui/args.ts:printUsage()` function
 - [ ] Verify all key bindings listed match actual behavior
-- [ ] Add any missing key bindings
+- [x] Add any missing key bindings
+  - **Fixed**: Added `A` key (select all) to Sessions view in `src/tui/args.ts:40` (HELP-001)
 - [ ] Remove any outdated key bindings
 - [ ] Verify formatting and spacing
 
@@ -738,8 +739,8 @@ When documentation and code conflict, resolve using this priority:
 | Phase 1 | 59 | 59 | 100% |
 | Phase 2 | 78 | 3 | 4% |
 | Phase 2a | 28 | 0 | 0% |
-| Phase 2b | 7 | 0 | 0% |
+| Phase 2b | 7 | 1 | 14% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **232** | **62** | **26.7%** |
+| **Total** | **232** | **63** | **27.2%** |

@@ -37,6 +37,7 @@ Projects view:
 
 Sessions view:
   Space           Toggle selection
+  A               Select all (visible)
   S               Toggle sort (updated/created)
   V               View chat history for selected session
   F               Search across all chat content in sessions
