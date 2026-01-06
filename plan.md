@@ -329,7 +329,11 @@
       - Created in same `src/cli/resolvers.ts` module with `findProjectById()`, `findProjectsByPrefix()`, `resolveProjectId()`
       - Same features as session resolver: exact/prefix matching, ambiguity handling
       - Tests included in same test file
-- [ ] Add CLI helper to validate `--yes` for destructive operations.
+- [x] Add CLI helper to validate `--yes` for destructive operations.
+      - Already implemented via `requireConfirmation()` in `src/cli/errors.ts` (lines 226-232)
+      - Throws `UsageError` (exit code 2) when `--yes` flag is not provided
+      - Error message includes suggestion to use `--dry-run` to preview changes
+      - Tests in `tests/cli/errors.test.ts` verify behavior (lines 174-192)
 - [x] Add CLI helper to emit `--dry-run` planned changes.
       - Added `DryRunResult` type with paths, operation, resourceType, and count fields
       - Added `formatDryRunOutput()` supporting json/ndjson/table formats
@@ -339,8 +343,20 @@
       - NDJSON format outputs one line per path with metadata
       - Table format shows "[DRY RUN]" header with operation and count summary
       - Added 18 tests in `tests/cli/output.test.ts`
-- [ ] Add CLI helper to copy files to `--backup-dir` before delete.
-- [ ] Add tests for ID resolution helper error cases.
+- [x] Add CLI helper to copy files to `--backup-dir` before delete.
+      - Created `src/cli/backup.ts` with `copyToBackupDir()`, `previewBackupPaths()`, `formatBackupResult()`
+      - `BackupOptions` type with backupDir, prefix, preserveStructure, structureRoot
+      - `BackupResult` type with sources, destinations, backupDir, failed array
+      - Creates timestamped subdirectory (YYYY-MM-DD_HH-MM-SS) within backup dir
+      - Supports optional prefix for backup directory name
+      - Preserves directory structure relative to structureRoot when enabled
+      - Handles files and directories (recursive copy)
+      - Reports failures in result.failed array without throwing
+      - Added 22 tests in `tests/cli/backup.test.ts`
+- [x] Add tests for ID resolution helper error cases.
+      - Already implemented in `tests/cli/resolvers.test.ts` with 34 tests
+      - Tests cover: NotFoundError for non-existent IDs, ambiguous prefix error messages
+      - Tests cover: empty list handling, projectId filtering, prefix vs exact match behavior
 
 ### Projects delete
 - [ ] Add `projects delete` options (`--id`, `--yes`, `--dry-run`, `--backup-dir`).
