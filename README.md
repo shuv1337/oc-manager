@@ -226,6 +226,33 @@ bunx opencode-manager projects delete --id prj_old --dry-run --format json
 | 3 | Resource not found (invalid project/session/message ID) |
 | 4 | File operation error (backup or delete failure) |
 
+#### ID Resolution
+
+Most commands accept ID prefixes for convenience. The CLI will match the prefix to a unique ID:
+
+```bash
+# Full ID
+opencode-manager sessions delete --session sess_01JGNPE16DT1JX1YA8KTPMDRW3
+
+# Prefix match (if unique)
+opencode-manager sessions delete --session sess_01JGN
+
+# Ambiguous prefix (fails with error listing matches)
+opencode-manager sessions delete --session sess_01
+# Error: Multiple sessions match prefix 'sess_01': sess_01JGN..., sess_01ABC...
+```
+
+**Commands supporting prefix matching:**
+- `projects delete --id`
+- `sessions delete --session`, `sessions rename --session`, `sessions move --session`, `sessions copy --session`
+- `sessions move --to`, `sessions copy --to` (project ID)
+- `chat list --session`, `chat show --session`
+- `chat show --message` (also supports 1-based `--index`)
+
+**Commands requiring exact IDs:**
+- `tokens session --session` — requires full session ID
+- `tokens project --project` — requires full project ID
+
 #### Clipboard Support
 
 The `--clipboard` flag (or `Y` key in the TUI) copies content to the system clipboard. Platform support:

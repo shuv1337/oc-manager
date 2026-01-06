@@ -334,8 +334,8 @@ When documentation and code conflict, resolve using this priority:
 | ~~DOC-001~~ | ~~README.md TUI section~~ | ~~Missing `H` as help toggle alternative (only shows `?`)~~ | ~~Add `?/H`~~ ✅ DONE |
 | ~~DOC-002~~ | ~~README.md TUI section~~ | ~~Projects view missing `Esc` (clear selection)~~ | ~~Add key binding~~ ✅ DONE |
 | ~~DOC-003~~ | ~~README.md TUI section~~ | ~~Sessions view missing `A` (select all), `Enter` (details), `Esc` (clear)~~ | ~~Add key bindings~~ ✅ DONE |
-| DOC-004 | README.md | Missing ID prefix matching behavior docs | Add section |
-| DOC-005 | README.md | Missing note that `tokens` commands require exact IDs | Add to tokens section |
+| ~~DOC-004~~ | ~~README.md~~ | ~~Missing ID prefix matching behavior docs~~ | ~~Add section~~ ✅ DONE |
+| ~~DOC-005~~ | ~~README.md~~ | ~~Missing note that `tokens` commands require exact IDs~~ | ~~Add to tokens section~~ ✅ DONE |
 | DOC-006 | README.md Output section | Missing `meta.limit` and `meta.truncated` fields | Add to JSON envelope docs |
 | DOC-007 | README.md Output section | Missing TTY auto-pretty-print behavior | Add note |
 
@@ -353,9 +353,9 @@ When documentation and code conflict, resolve using this priority:
 | MINOR-001 | tests/fixtures/README.md | Legacy fallback paths not documented | Add legacy paths section (optional) |
 
 ### Summary Statistics
-- **Total Discrepancies**: 14 (8 fixed)
+- **Total Discrepancies**: 14 (10 fixed)
 - **Priority 1 (Requirements)**: 2 (2 fixed)
-- **Priority 2 (Missing Docs)**: 7 (3 fixed)
+- **Priority 2 (Missing Docs)**: 7 (5 fixed)
 - **Priority 3 (Help Text)**: 4 (3 fixed)
 - **Priority 4 (Minor)**: 1 (0 fixed)
 
@@ -463,11 +463,11 @@ When documentation and code conflict, resolve using this priority:
 - [ ] Document list metadata in JSON output
 
 ### 2.11 README.md ID Resolution
-- [ ] Document prefix matching for projects
-- [ ] Document prefix matching for sessions
-- [ ] Document prefix matching for chat messages
-- [ ] Document exact ID requirement for tokens
-- [ ] Document 1-based index option for `chat show`
+- [x] Document prefix matching for projects
+- [x] Document prefix matching for sessions
+- [x] Document prefix matching for chat messages
+- [x] Document exact ID requirement for tokens
+- [x] Document 1-based index option for `chat show`
 
 ### 2.12 README.md Exit Codes
 - [ ] Add exit codes section
@@ -740,10 +740,10 @@ When documentation and code conflict, resolve using this priority:
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
 | Phase 1 | 59 | 59 | 100% |
-| Phase 2 | 78 | 6 | 8% |
+| Phase 2 | 78 | 11 | 14% |
 | Phase 2a | 28 | 0 | 0% |
 | Phase 2b | 7 | 1 | 14% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **232** | **66** | **28.4%** |
+| **Total** | **232** | **71** | **30.6%** |
