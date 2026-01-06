@@ -133,11 +133,27 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: Root/TUI subcommand → TUI help (key bindings); CLI subcommands (projects, sessions, chat, tokens) → Commander help
 
 ### 1.9 TUI Key Bindings Audit
-- [ ] Read `src/tui/args.ts` lines 18-64 (printUsage function)
-- [ ] Extract all documented key bindings
-- [ ] Read `src/tui/app.tsx` and verify key bindings match actual behavior
-- [ ] Compare against README.md TUI section
-- [ ] Document any discrepancies
+- [x] Read `src/tui/args.ts` lines 18-64 (printUsage function)
+  - **Finding**: printUsage() at lines 18-65 defines all TUI key bindings
+- [x] Extract all documented key bindings
+  - **Finding**: Global: Tab/1/2 switch, / search, X clear, ?/H help, R reload, Q quit
+  - **Finding**: Projects: Space select, A select all, M missing-only, D delete, Enter sessions, Esc clear
+  - **Finding**: Sessions: Space select, S sort, V view chat, F search chats, Shift+R rename, M move, P copy, Y copy ID, C clear filter, D delete, Enter details, Esc clear
+  - **Finding**: Chat search: Type query, Enter search/open, Up/Down navigate, Esc close
+  - **Finding**: Chat viewer: Esc close, Up/Down navigate, PgUp/PgDn jump 10, Home/End first/last, Y copy message
+- [x] Read `src/tui/app.tsx` and verify key bindings match actual behavior
+  - **Finding**: All documented keys verified in handleKey implementations (ProjectsPanel: lines 415-464, SessionsPanel: lines 838-993, handleGlobalKey: lines 1731-1918)
+  - **Finding**: Sessions `A` key (select all) exists in code at line 891 but MISSING from args.ts help text
+- [x] Compare against README.md TUI section
+  - **Finding**: README.md:96-101 documents keyboard reference
+  - **Finding**: README Global mentions only `?` for help, not `H` alternative
+  - **Finding**: README Projects missing `Esc` (clear selection)
+  - **Finding**: README Sessions missing `A` (select all), `Enter` (show details), `Esc` (clear selection)
+- [x] Document any discrepancies
+  - **DISCREPANCY-001**: Sessions `A` key (select all) implemented but undocumented in args.ts:38-50
+  - **DISCREPANCY-002**: README missing `H` as help toggle alternative
+  - **DISCREPANCY-003**: README missing `Esc` for Projects (clear selection)
+  - **DISCREPANCY-004**: README missing `A`, `Enter`, `Esc` for Sessions view
 
 ### 1.10 Data Model Audit
 - [ ] Read `src/lib/opencode-data.ts` storage layout section
@@ -582,11 +598,11 @@ When documentation and code conflict, resolve using this priority:
 | Phase | Tasks | Completed | Progress |
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
-| Phase 1 | 54 | 43 | 80% |
+| Phase 1 | 54 | 48 | 89% |
 | Phase 2 | 78 | 0 | 0% |
 | Phase 2a | 28 | 0 | 0% |
 | Phase 2b | 7 | 0 | 0% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **227** | **43** | **18.9%** |
+| **Total** | **227** | **48** | **21.1%** |
