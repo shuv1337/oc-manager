@@ -58,7 +58,7 @@ The TUI displays token telemetry from OpenCode's stored message data at three le
 - Large datasets are handled with lazy computation to avoid UI freezes.
 
 ## Requirements
-- [Bun](https://bun.sh) **1.1.0+** (developed/tested on 1.2.x).
+- [Bun](https://bun.sh) **1.3.0+** (developed/tested on 1.2.x).
 - A node-compatible terminal (truecolor improves readability but is optional).
 
 ## Installation
