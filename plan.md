@@ -69,7 +69,11 @@
 - [x] Ensure `bun run tui` uses the new TUI entrypoint.
       - Already configured: `package.json` has `"tui": "bun src/tui/index.tsx"`
       - Verified `bun run tui --help` works and displays usage/keybindings
-- [ ] Update `src/bin/opencode-manager.ts` to route CLI vs TUI via dynamic imports.
+- [x] Update `src/bin/opencode-manager.ts` to route CLI vs TUI via dynamic imports.
+      - Routes based on first argument: CLI subcommands (projects, sessions, chat, tokens) vs TUI
+      - Uses dynamic imports for lazy loading of CLI/TUI modules
+      - CLI subcommands show "not implemented" until CLI module is created
+      - "tui" subcommand strips itself before passing args to TUI bootstrap
 - [ ] Confirm TUI default path triggers when no subcommand is provided.
 - [ ] Add `commander@^12.0.0` to `package.json` dependencies.
 - [ ] Create `src/cli/index.ts` with Commander program and `runCLI(args)`.

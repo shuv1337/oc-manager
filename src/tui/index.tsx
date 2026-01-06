@@ -31,9 +31,11 @@ export async function launchTUI(options?: Partial<TUIOptions>): Promise<void> {
 /**
  * Bootstrap the TUI from command-line arguments.
  * Parses args and launches the TUI.
+ *
+ * @param argv - Optional argument array (defaults to process.argv.slice(2))
  */
-export async function bootstrap(): Promise<void> {
-  const options = parseArgs()
+export async function bootstrap(argv?: string[]): Promise<void> {
+  const options = parseArgs(argv)
   await launchTUI(options)
 }
 
