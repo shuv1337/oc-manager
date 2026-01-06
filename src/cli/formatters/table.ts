@@ -5,7 +5,7 @@
  * Supports column definitions, truncation, and alignment.
  */
 
-import type { ChatMessage, ChatRole, ProjectRecord, ProjectState, SessionRecord } from "../../lib/opencode-data"
+import type { AggregateTokenSummary, ChatMessage, ChatRole, ProjectRecord, ProjectState, SessionRecord, TokenBreakdown, TokenSummary } from "../../lib/opencode-data"
 
 // ========================
 // Column Definition Types
@@ -545,4 +545,191 @@ export function printChatTable(
   options?: TableFormatOptions & { compact?: boolean }
 ): void {
   console.log(formatChatTable(messages, options))
+}
+
+// ========================
+// Tokens Summary Formatting
+// ========================
+
+/**
+ * Row type for token breakdown table.
+ * Each row represents a single token category.
+ */
+export interface TokenBreakdownRow {
+  category: string
+  count: number
+  percentage: number
+}
+
+/**
+ * Convert a TokenBreakdown into table rows.
+ */
+export function tokenBreakdownToRows(breakdown: TokenBreakdown): TokenBreakdownRow[] {
+  const total = breakdown.total || 1 // avoid division by zero
+  return [
+    { category: "Input", count: breakdown.input, percentage: (breakdown.input / total) * 100 },
+    { category: "Output", count: breakdown.output, percentage: (breakdown.output / total) * 100 },
+    { category: "Reasoning", count: breakdown.reasoning, percentage: (breakdown.reasoning / total) * 100 },
+    { category: "Cache Read", count: breakdown.cacheRead, percentage: (breakdown.cacheRead / total) * 100 },
+    { category: "Cache Write", count: breakdown.cacheWrite, percentage: (breakdown.cacheWrite / total) * 100 },
+    { category: "Total", count: breakdown.total, percentage: 100 },
+  ]
+}
+
+/**
+ * Format a percentage for display.
+ */
+export function formatPercentage(value: number): string {
+  if (value === 0) {
+    return "-"
+  }
+  if (value === 100) {
+    return "100%"
+  }
+  return `${value.toFixed(1)}%`
+}
+
+/**
+ * Format a large number with K/M suffix.
+ */
+export function formatLargeNumber(value: number): string {
+  if (value === 0) {
+    return "0"
+  }
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(2)}M`
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}K`
+  }
+  return String(value)
+}
+
+/**
+ * Column definitions for token breakdown table.
+ */
+export const tokenBreakdownColumns: ColumnDefinition<TokenBreakdownRow>[] = [
+  {
+    header: "Category",
+    width: 12,
+    align: "left",
+    accessor: (row) => row.category,
+  },
+  {
+    header: "Tokens",
+    width: 12,
+    align: "right",
+    accessor: (row) => row.count,
+    format: (val) => formatLargeNumber(val as number),
+  },
+  {
+    header: "%",
+    width: 8,
+    align: "right",
+    accessor: (row) => row.percentage,
+    format: (val) => formatPercentage(val as number),
+  },
+]
+
+/**
+ * Format a TokenBreakdown as a table.
+ */
+export function formatTokenBreakdownTable(
+  breakdown: TokenBreakdown,
+  options?: TableFormatOptions
+): string {
+  const rows = tokenBreakdownToRows(breakdown)
+  return formatTable(rows, tokenBreakdownColumns, options)
+}
+
+/**
+ * Print a TokenBreakdown table to stdout.
+ */
+export function printTokenBreakdownTable(
+  breakdown: TokenBreakdown,
+  options?: TableFormatOptions
+): void {
+  console.log(formatTokenBreakdownTable(breakdown, options))
+}
+
+/**
+ * Format a TokenSummary for display.
+ * Returns a table for known summaries, or a message for unknown.
+ */
+export function formatTokenSummary(
+  summary: TokenSummary,
+  options?: TableFormatOptions
+): string {
+  if (summary.kind === "known") {
+    return formatTokenBreakdownTable(summary.tokens, options)
+  }
+  // Unknown summary - return reason message
+  switch (summary.reason) {
+    case "missing":
+      return "[Token data unavailable]"
+    case "parse_error":
+      return "[Token data parse error]"
+    case "no_messages":
+      return "[No messages found]"
+    default:
+      return "[Unknown token status]"
+  }
+}
+
+/**
+ * Print a TokenSummary to stdout.
+ */
+export function printTokenSummary(
+  summary: TokenSummary,
+  options?: TableFormatOptions
+): void {
+  console.log(formatTokenSummary(summary, options))
+}
+
+/**
+ * Row type for aggregate token summary table.
+ */
+export interface AggregateTokenRow {
+  label: string
+  value: string
+}
+
+/**
+ * Format an AggregateTokenSummary as a detailed summary.
+ * Includes breakdown table plus metadata about unknown sessions.
+ */
+export function formatAggregateTokenSummary(
+  summary: AggregateTokenSummary,
+  options?: TableFormatOptions & { label?: string }
+): string {
+  const lines: string[] = []
+  const label = options?.label ?? "Token Summary"
+
+  lines.push(label)
+  lines.push("=".repeat(label.length))
+  lines.push("")
+
+  if (summary.total.kind === "known") {
+    lines.push(formatTokenBreakdownTable(summary.total.tokens, options))
+  } else {
+    lines.push(formatTokenSummary(summary.total, options))
+  }
+
+  // Add metadata if there are unknown sessions
+  if (summary.unknownSessions && summary.unknownSessions > 0) {
+    lines.push("")
+    lines.push(`Note: ${summary.unknownSessions} session(s) with unavailable token data`)
+  }
+
+  return lines.join("\n")
+}
+
+/**
+ * Print an AggregateTokenSummary to stdout.
+ */
+export function printAggregateTokenSummary(
+  summary: AggregateTokenSummary,
+  options?: TableFormatOptions & { label?: string }
+): void {
+  console.log(formatAggregateTokenSummary(summary, options))
 }

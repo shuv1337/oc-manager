@@ -167,7 +167,15 @@
       - Added `chatListColumnsCompact` (4 columns: #, R, Preview, Tokens)
       - Added `formatChatTable()` and `printChatTable()` convenience functions
       - Added comprehensive tests (26 new tests across 5 describe blocks)
-- [ ] Extend table formatter for `tokens` summary formatting.
+- [x] Extend table formatter for `tokens` summary formatting.
+      - Added `TokenBreakdownRow` type for token table rows
+      - Added `tokenBreakdownToRows()` to convert TokenBreakdown to table rows
+      - Added `formatPercentage()` and `formatLargeNumber()` helper formatters
+      - Added `tokenBreakdownColumns` column definitions (Category, Tokens, %)
+      - Added `formatTokenBreakdownTable()` and `printTokenBreakdownTable()`
+      - Added `formatTokenSummary()` and `printTokenSummary()` for TokenSummary handling
+      - Added `AggregateTokenRow` type and `formatAggregateTokenSummary()` for aggregate summaries
+      - Added comprehensive tests (32 new tests across 7 describe blocks)
 - [ ] Create `src/cli/output.ts` to select formatter by `--format`.
 - [ ] Add shared error/exit helpers for codes 1-4 in CLI layer.
 - [ ] Extract fuzzy search into `src/lib/search.ts` (use fast-fuzzy).

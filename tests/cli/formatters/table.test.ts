@@ -24,9 +24,17 @@ import {
   chatListColumns,
   chatListColumnsCompact,
   formatChatTable,
+  tokenBreakdownToRows,
+  formatPercentage,
+  formatLargeNumber,
+  tokenBreakdownColumns,
+  formatTokenBreakdownTable,
+  formatTokenSummary,
+  formatAggregateTokenSummary,
   type ColumnDefinition,
+  type TokenBreakdownRow,
 } from "../../../src/cli/formatters/table"
-import type { ChatMessage, ProjectRecord, SessionRecord } from "../../../src/lib/opencode-data"
+import type { AggregateTokenSummary, ChatMessage, ProjectRecord, SessionRecord, TokenBreakdown, TokenSummary } from "../../../src/lib/opencode-data"
 
 // ========================
 // Helper Test Data
@@ -837,5 +845,320 @@ describe("formatChatTable", () => {
   it("should handle custom separator", () => {
     const result = formatChatTable(mockMessages, { separator: " | " })
     expect(result).toContain(" | ")
+  })
+})
+
+// ========================
+// tokenBreakdownToRows tests
+// ========================
+
+describe("tokenBreakdownToRows", () => {
+  const mockBreakdown: TokenBreakdown = {
+    input: 1000,
+    output: 500,
+    reasoning: 200,
+    cacheRead: 100,
+    cacheWrite: 50,
+    total: 1850,
+  }
+
+  it("should create correct number of rows", () => {
+    const rows = tokenBreakdownToRows(mockBreakdown)
+    expect(rows.length).toBe(6)
+  })
+
+  it("should have correct categories", () => {
+    const rows = tokenBreakdownToRows(mockBreakdown)
+    expect(rows[0].category).toBe("Input")
+    expect(rows[1].category).toBe("Output")
+    expect(rows[2].category).toBe("Reasoning")
+    expect(rows[3].category).toBe("Cache Read")
+    expect(rows[4].category).toBe("Cache Write")
+    expect(rows[5].category).toBe("Total")
+  })
+
+  it("should have correct counts", () => {
+    const rows = tokenBreakdownToRows(mockBreakdown)
+    expect(rows[0].count).toBe(1000)
+    expect(rows[1].count).toBe(500)
+    expect(rows[5].count).toBe(1850)
+  })
+
+  it("should calculate percentages correctly", () => {
+    const rows = tokenBreakdownToRows(mockBreakdown)
+    // Input: 1000/1850 = ~54.05%
+    expect(rows[0].percentage).toBeCloseTo(54.05, 1)
+    // Output: 500/1850 = ~27.03%
+    expect(rows[1].percentage).toBeCloseTo(27.03, 1)
+    // Total should be 100%
+    expect(rows[5].percentage).toBe(100)
+  })
+
+  it("should handle zero total without division by zero", () => {
+    const zeroBreakdown: TokenBreakdown = {
+      input: 0,
+      output: 0,
+      reasoning: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      total: 0,
+    }
+    const rows = tokenBreakdownToRows(zeroBreakdown)
+    // Should not throw and all percentages should be 0
+    expect(rows[0].percentage).toBe(0)
+    expect(rows[5].percentage).toBe(100) // Total row always shows 100%
+  })
+})
+
+// ========================
+// formatPercentage tests
+// ========================
+
+describe("formatPercentage", () => {
+  it("should format zero as dash", () => {
+    expect(formatPercentage(0)).toBe("-")
+  })
+
+  it("should format 100 as 100%", () => {
+    expect(formatPercentage(100)).toBe("100%")
+  })
+
+  it("should format decimals with one decimal place", () => {
+    expect(formatPercentage(54.054)).toBe("54.1%")
+    expect(formatPercentage(27.027)).toBe("27.0%")
+    expect(formatPercentage(0.5)).toBe("0.5%")
+  })
+})
+
+// ========================
+// formatLargeNumber tests
+// ========================
+
+describe("formatLargeNumber", () => {
+  it("should format zero as 0", () => {
+    expect(formatLargeNumber(0)).toBe("0")
+  })
+
+  it("should format small numbers without suffix", () => {
+    expect(formatLargeNumber(1)).toBe("1")
+    expect(formatLargeNumber(999)).toBe("999")
+  })
+
+  it("should format thousands with K suffix", () => {
+    expect(formatLargeNumber(1000)).toBe("1.0K")
+    expect(formatLargeNumber(1500)).toBe("1.5K")
+    expect(formatLargeNumber(12345)).toBe("12.3K")
+    expect(formatLargeNumber(999999)).toBe("1000.0K")
+  })
+
+  it("should format millions with M suffix", () => {
+    expect(formatLargeNumber(1000000)).toBe("1.00M")
+    expect(formatLargeNumber(1500000)).toBe("1.50M")
+    expect(formatLargeNumber(12345678)).toBe("12.35M")
+  })
+})
+
+// ========================
+// tokenBreakdownColumns tests
+// ========================
+
+describe("tokenBreakdownColumns", () => {
+  const mockRow: TokenBreakdownRow = {
+    category: "Input",
+    count: 12345,
+    percentage: 54.05,
+  }
+
+  it("should have correct column count", () => {
+    expect(tokenBreakdownColumns.length).toBe(3)
+  })
+
+  it("should have category column", () => {
+    const col = tokenBreakdownColumns.find((c) => c.header === "Category")
+    expect(col).toBeDefined()
+    expect(col!.accessor(mockRow)).toBe("Input")
+    expect(col!.align).toBe("left")
+  })
+
+  it("should have tokens column with formatter", () => {
+    const col = tokenBreakdownColumns.find((c) => c.header === "Tokens")
+    expect(col).toBeDefined()
+    expect(col!.format).toBeDefined()
+    const val = col!.accessor(mockRow)
+    expect(col!.format!(val)).toBe("12.3K")
+    expect(col!.align).toBe("right")
+  })
+
+  it("should have percentage column with formatter", () => {
+    const col = tokenBreakdownColumns.find((c) => c.header === "%")
+    expect(col).toBeDefined()
+    expect(col!.format).toBeDefined()
+    const val = col!.accessor(mockRow)
+    expect(col!.format!(val)).toBe("54.0%")
+    expect(col!.align).toBe("right")
+  })
+})
+
+// ========================
+// formatTokenBreakdownTable tests
+// ========================
+
+describe("formatTokenBreakdownTable", () => {
+  const mockBreakdown: TokenBreakdown = {
+    input: 10000,
+    output: 5000,
+    reasoning: 2000,
+    cacheRead: 1000,
+    cacheWrite: 500,
+    total: 18500,
+  }
+
+  it("should format breakdown as table with headers", () => {
+    const result = formatTokenBreakdownTable(mockBreakdown)
+    const lines = result.split("\n")
+    expect(lines.length).toBe(8) // header + underline + 6 rows
+    expect(lines[0]).toContain("Category")
+    expect(lines[0]).toContain("Tokens")
+    expect(lines[0]).toContain("%")
+  })
+
+  it("should include all categories", () => {
+    const result = formatTokenBreakdownTable(mockBreakdown)
+    expect(result).toContain("Input")
+    expect(result).toContain("Output")
+    expect(result).toContain("Reasoning")
+    expect(result).toContain("Cache Read")
+    expect(result).toContain("Cache Write")
+    expect(result).toContain("Total")
+  })
+
+  it("should format token counts with K suffix", () => {
+    const result = formatTokenBreakdownTable(mockBreakdown)
+    expect(result).toContain("10.0K") // input
+    expect(result).toContain("5.0K") // output
+    expect(result).toContain("18.5K") // total
+  })
+
+  it("should include percentages", () => {
+    const result = formatTokenBreakdownTable(mockBreakdown)
+    expect(result).toContain("%")
+    expect(result).toContain("100%") // total row
+  })
+})
+
+// ========================
+// formatTokenSummary tests
+// ========================
+
+describe("formatTokenSummary", () => {
+  it("should format known summary as table", () => {
+    const summary: TokenSummary = {
+      kind: "known",
+      tokens: {
+        input: 1000,
+        output: 500,
+        reasoning: 200,
+        cacheRead: 100,
+        cacheWrite: 50,
+        total: 1850,
+      },
+    }
+    const result = formatTokenSummary(summary)
+    expect(result).toContain("Category")
+    expect(result).toContain("Input")
+    expect(result).toContain("Total")
+  })
+
+  it("should format unknown summary with missing reason", () => {
+    const summary: TokenSummary = { kind: "unknown", reason: "missing" }
+    const result = formatTokenSummary(summary)
+    expect(result).toBe("[Token data unavailable]")
+  })
+
+  it("should format unknown summary with parse_error reason", () => {
+    const summary: TokenSummary = { kind: "unknown", reason: "parse_error" }
+    const result = formatTokenSummary(summary)
+    expect(result).toBe("[Token data parse error]")
+  })
+
+  it("should format unknown summary with no_messages reason", () => {
+    const summary: TokenSummary = { kind: "unknown", reason: "no_messages" }
+    const result = formatTokenSummary(summary)
+    expect(result).toBe("[No messages found]")
+  })
+})
+
+// ========================
+// formatAggregateTokenSummary tests
+// ========================
+
+describe("formatAggregateTokenSummary", () => {
+  const mockAggregate: AggregateTokenSummary = {
+    total: {
+      kind: "known",
+      tokens: {
+        input: 50000,
+        output: 25000,
+        reasoning: 10000,
+        cacheRead: 5000,
+        cacheWrite: 2500,
+        total: 92500,
+      },
+    },
+    knownOnly: {
+      input: 50000,
+      output: 25000,
+      reasoning: 10000,
+      cacheRead: 5000,
+      cacheWrite: 2500,
+      total: 92500,
+    },
+    unknownSessions: 3,
+  }
+
+  it("should include label and header", () => {
+    const result = formatAggregateTokenSummary(mockAggregate)
+    expect(result).toContain("Token Summary")
+    expect(result).toContain("=============")
+  })
+
+  it("should include custom label when provided", () => {
+    const result = formatAggregateTokenSummary(mockAggregate, { label: "Project Tokens" })
+    expect(result).toContain("Project Tokens")
+    expect(result).toContain("==============")
+  })
+
+  it("should include breakdown table", () => {
+    const result = formatAggregateTokenSummary(mockAggregate)
+    expect(result).toContain("Category")
+    expect(result).toContain("Tokens")
+    expect(result).toContain("Input")
+    expect(result).toContain("Total")
+  })
+
+  it("should include unknown sessions note", () => {
+    const result = formatAggregateTokenSummary(mockAggregate)
+    expect(result).toContain("Note: 3 session(s) with unavailable token data")
+  })
+
+  it("should not include unknown sessions note when zero", () => {
+    const noUnknown: AggregateTokenSummary = {
+      ...mockAggregate,
+      unknownSessions: 0,
+    }
+    const result = formatAggregateTokenSummary(noUnknown)
+    expect(result).not.toContain("Note:")
+    expect(result).not.toContain("unavailable")
+  })
+
+  it("should handle unknown total summary", () => {
+    const unknownTotal: AggregateTokenSummary = {
+      total: { kind: "unknown", reason: "missing" },
+      unknownSessions: 5,
+    }
+    const result = formatAggregateTokenSummary(unknownTotal)
+    expect(result).toContain("Token Summary")
+    expect(result).toContain("[Token data unavailable]")
+    expect(result).toContain("Note: 5 session(s) with unavailable token data")
   })
 })
