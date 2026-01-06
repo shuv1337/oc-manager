@@ -34,7 +34,7 @@
       - **Extraction target**: lines 141-151 (self-contained function, no external deps beyond `exec`)
 - [x] Create `tests/` directory at repo root.
 - [x] Create `tests/fixtures/` directory for metadata stores.
-- [ ] Design a minimal fixture store layout matching the on-disk schema.
+- [x] Design a minimal fixture store layout matching the on-disk schema.
 - [ ] Add fixture project metadata for at least two projects (one missing).
 - [ ] Add fixture session metadata for at least two sessions with distinct titles.
 - [ ] Add fixture chat message data covering text/tool/subtask parts.
