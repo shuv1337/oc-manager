@@ -5,7 +5,7 @@
  * Supports column definitions, truncation, and alignment.
  */
 
-import type { ProjectRecord, ProjectState } from "../../lib/opencode-data"
+import type { ProjectRecord, ProjectState, SessionRecord } from "../../lib/opencode-data"
 
 // ========================
 // Column Definition Types
@@ -310,4 +310,106 @@ export function printProjectsTable(
   options?: TableFormatOptions & { compact?: boolean }
 ): void {
   console.log(formatProjectsTable(projects, options))
+}
+
+// ========================
+// Sessions List Columns
+// ========================
+
+/**
+ * Column definitions for sessions list output.
+ *
+ * Columns: #, Title, SessionID, ProjectID, Updated, Created
+ */
+export const sessionListColumns: ColumnDefinition<SessionRecord>[] = [
+  {
+    header: "#",
+    width: 4,
+    align: "right",
+    accessor: (row) => row.index,
+  },
+  {
+    header: "Title",
+    width: 40,
+    align: "left",
+    accessor: (row) => row.title,
+  },
+  {
+    header: "Session ID",
+    width: 24,
+    align: "left",
+    accessor: (row) => row.sessionId,
+  },
+  {
+    header: "Project ID",
+    width: 24,
+    align: "left",
+    accessor: (row) => row.projectId,
+  },
+  {
+    header: "Updated",
+    width: 16,
+    align: "left",
+    accessor: (row) => row.updatedAt,
+    format: (val) => formatDateForTable(val as Date | null | undefined),
+  },
+  {
+    header: "Created",
+    width: 16,
+    align: "left",
+    accessor: (row) => row.createdAt,
+    format: (val) => formatDateForTable(val as Date | null | undefined),
+  },
+]
+
+/**
+ * Compact column definitions for sessions list (narrower terminals).
+ */
+export const sessionListColumnsCompact: ColumnDefinition<SessionRecord>[] = [
+  {
+    header: "#",
+    width: 4,
+    align: "right",
+    accessor: (row) => row.index,
+  },
+  {
+    header: "Title",
+    width: 30,
+    align: "left",
+    accessor: (row) => row.title,
+  },
+  {
+    header: "Session ID",
+    width: 20,
+    align: "left",
+    accessor: (row) => row.sessionId,
+  },
+  {
+    header: "Updated",
+    width: 16,
+    align: "left",
+    accessor: (row) => row.updatedAt,
+    format: (val) => formatDateForTable(val as Date | null | undefined),
+  },
+]
+
+/**
+ * Format a sessions list as a table.
+ */
+export function formatSessionsTable(
+  sessions: SessionRecord[],
+  options?: TableFormatOptions & { compact?: boolean }
+): string {
+  const columns = options?.compact ? sessionListColumnsCompact : sessionListColumns
+  return formatTable(sessions, columns, options)
+}
+
+/**
+ * Print a sessions list table to stdout.
+ */
+export function printSessionsTable(
+  sessions: SessionRecord[],
+  options?: TableFormatOptions & { compact?: boolean }
+): void {
+  console.log(formatSessionsTable(sessions, options))
 }

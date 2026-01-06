@@ -156,7 +156,11 @@
       - Added `formatProjectsTable()` and `printProjectsTable()` convenience functions
       - Added `formatDateForTable()` and `formatProjectState()` helper formatters
       - Added comprehensive tests in `tests/cli/formatters/table.test.ts` (44 tests)
-- [ ] Extend table formatter for `sessions list` columns and truncation.
+- [x] Extend table formatter for `sessions list` columns and truncation.
+      - Added `sessionListColumns` (6 columns: #, Title, SessionID, ProjectID, Updated, Created)
+      - Added `sessionListColumnsCompact` (4 columns: #, Title, SessionID, Updated)
+      - Added `formatSessionsTable()` and `printSessionsTable()` convenience functions
+      - Added comprehensive tests (18 new tests across 3 describe blocks)
 - [ ] Extend table formatter for `chat list` columns and truncation.
 - [ ] Extend table formatter for `tokens` summary formatting.
 - [ ] Create `src/cli/output.ts` to select formatter by `--format`.

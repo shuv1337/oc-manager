@@ -14,11 +14,14 @@ import {
   formatDateForTable,
   formatProjectState,
   formatProjectsTable,
+  formatSessionsTable,
   projectListColumns,
+  sessionListColumns,
+  sessionListColumnsCompact,
   type ColumnDefinition,
   type Alignment,
 } from "../../../src/cli/formatters/table"
-import type { ProjectRecord } from "../../../src/lib/opencode-data"
+import type { ProjectRecord, SessionRecord } from "../../../src/lib/opencode-data"
 
 // ========================
 // Helper Test Data
@@ -372,5 +375,192 @@ describe("formatProjectsTable", () => {
     const result = formatProjectsTable([])
     const lines = result.split("\n")
     expect(lines.length).toBe(2) // header + underline only
+  })
+})
+
+// ========================
+// sessionListColumns tests
+// ========================
+
+describe("sessionListColumns", () => {
+  const mockSession: SessionRecord = {
+    index: 1,
+    filePath: "/path/to/session.json",
+    sessionId: "sess-abc123",
+    projectId: "proj-xyz789",
+    directory: "/home/user/projects/my-project",
+    title: "Implement feature X",
+    version: "1.0.0",
+    createdAt: new Date("2024-01-15T10:30:00.000Z"),
+    updatedAt: new Date("2024-01-16T14:45:00.000Z"),
+  }
+
+  it("should have correct column count", () => {
+    expect(sessionListColumns.length).toBe(6)
+  })
+
+  it("should have index column", () => {
+    const col = sessionListColumns.find((c) => c.header === "#")
+    expect(col).toBeDefined()
+    expect(col!.accessor(mockSession)).toBe(1)
+    expect(col!.align).toBe("right")
+  })
+
+  it("should have title column", () => {
+    const col = sessionListColumns.find((c) => c.header === "Title")
+    expect(col).toBeDefined()
+    expect(col!.accessor(mockSession)).toBe("Implement feature X")
+    expect(col!.width).toBe(40)
+  })
+
+  it("should have sessionId column", () => {
+    const col = sessionListColumns.find((c) => c.header === "Session ID")
+    expect(col).toBeDefined()
+    expect(col!.accessor(mockSession)).toBe("sess-abc123")
+  })
+
+  it("should have projectId column", () => {
+    const col = sessionListColumns.find((c) => c.header === "Project ID")
+    expect(col).toBeDefined()
+    expect(col!.accessor(mockSession)).toBe("proj-xyz789")
+  })
+
+  it("should have updated column with date formatter", () => {
+    const col = sessionListColumns.find((c) => c.header === "Updated")
+    expect(col).toBeDefined()
+    expect(col!.format).toBeDefined()
+    const date = col!.accessor(mockSession)
+    expect(col!.format!(date)).toBe("2024-01-16 14:45")
+  })
+
+  it("should have created column with date formatter", () => {
+    const col = sessionListColumns.find((c) => c.header === "Created")
+    expect(col).toBeDefined()
+    expect(col!.format).toBeDefined()
+    const date = col!.accessor(mockSession)
+    expect(col!.format!(date)).toBe("2024-01-15 10:30")
+  })
+})
+
+// ========================
+// sessionListColumnsCompact tests
+// ========================
+
+describe("sessionListColumnsCompact", () => {
+  const mockSession: SessionRecord = {
+    index: 2,
+    filePath: "/path/to/session.json",
+    sessionId: "sess-def456",
+    projectId: "proj-abc123",
+    directory: "/home/user/work/another-project",
+    title: "Fix bug in authentication",
+    version: "1.0.0",
+    createdAt: new Date("2024-01-10T08:00:00.000Z"),
+    updatedAt: new Date("2024-01-12T16:30:00.000Z"),
+  }
+
+  it("should have fewer columns than full version", () => {
+    expect(sessionListColumnsCompact.length).toBeLessThan(sessionListColumns.length)
+    expect(sessionListColumnsCompact.length).toBe(4)
+  })
+
+  it("should not have projectId column", () => {
+    const col = sessionListColumnsCompact.find((c) => c.header === "Project ID")
+    expect(col).toBeUndefined()
+  })
+
+  it("should not have created column", () => {
+    const col = sessionListColumnsCompact.find((c) => c.header === "Created")
+    expect(col).toBeUndefined()
+  })
+
+  it("should have narrower title column", () => {
+    const col = sessionListColumnsCompact.find((c) => c.header === "Title")
+    expect(col).toBeDefined()
+    expect(col!.width).toBe(30)
+  })
+
+  it("should have narrower sessionId column", () => {
+    const col = sessionListColumnsCompact.find((c) => c.header === "Session ID")
+    expect(col).toBeDefined()
+    expect(col!.width).toBe(20)
+  })
+})
+
+// ========================
+// formatSessionsTable tests
+// ========================
+
+describe("formatSessionsTable", () => {
+  const mockSessions: SessionRecord[] = [
+    {
+      index: 1,
+      filePath: "/path/to/session1.json",
+      sessionId: "sess-abc123",
+      projectId: "proj-xyz789",
+      directory: "/home/user/projects/my-project",
+      title: "Implement feature X",
+      version: "1.0.0",
+      createdAt: new Date("2024-01-15T10:30:00.000Z"),
+      updatedAt: new Date("2024-01-16T14:45:00.000Z"),
+    },
+    {
+      index: 2,
+      filePath: "/path/to/session2.json",
+      sessionId: "sess-def456",
+      projectId: "proj-abc123",
+      directory: "/home/user/work/another-project",
+      title: "Fix critical bug in authentication module",
+      version: "1.0.0",
+      createdAt: new Date("2024-01-10T08:00:00.000Z"),
+      updatedAt: null,
+    },
+  ]
+
+  it("should format sessions table with headers", () => {
+    const result = formatSessionsTable(mockSessions)
+    const lines = result.split("\n")
+    expect(lines.length).toBe(4) // header + underline + 2 rows
+    expect(lines[0]).toContain("#")
+    expect(lines[0]).toContain("Title")
+    expect(lines[0]).toContain("Session ID")
+    expect(lines[0]).toContain("Project ID")
+    expect(lines[0]).toContain("Updated")
+    expect(lines[0]).toContain("Created")
+  })
+
+  it("should truncate long titles", () => {
+    const result = formatSessionsTable(mockSessions)
+    // Second session has a long title that should be truncated (40 char column width)
+    // "Fix critical bug in authentication module" is 41 chars, gets truncated
+    expect(result).toContain("Fix critical bug in authentication modu…")
+  })
+
+  it("should format null dates as dash", () => {
+    const result = formatSessionsTable(mockSessions)
+    // Second session has null updatedAt
+    expect(result).toContain("-")
+  })
+
+  it("should use compact columns when specified", () => {
+    const result = formatSessionsTable(mockSessions, { compact: true })
+    const lines = result.split("\n")
+    // Compact header should not have "Project ID" or "Created" columns
+    expect(lines[0]).not.toContain("Project ID")
+    expect(lines[0]).not.toContain("Created")
+    expect(lines[0]).toContain("Title")
+    expect(lines[0]).toContain("Session ID")
+    expect(lines[0]).toContain("Updated")
+  })
+
+  it("should format empty sessions list", () => {
+    const result = formatSessionsTable([])
+    const lines = result.split("\n")
+    expect(lines.length).toBe(2) // header + underline only
+  })
+
+  it("should handle custom separator", () => {
+    const result = formatSessionsTable(mockSessions, { separator: " | " })
+    expect(result).toContain(" | ")
   })
 })
