@@ -7,6 +7,8 @@
 
 import { Command, type OptionValues } from "commander"
 import { parseGlobalOptions, type GlobalOptions } from "../index"
+import { loadSessionRecords, type SessionRecord } from "../../lib/opencode-data"
+import { getOutputOptions, printSessionsOutput } from "../output"
 
 /**
  * Collect all options from a command and its ancestors.
@@ -155,13 +157,23 @@ export function registerSessionsCommands(parent: Command): void {
 /**
  * Handle the sessions list command.
  */
-function handleSessionsList(
+async function handleSessionsList(
   globalOpts: GlobalOptions,
   listOpts: SessionsListOptions
-): void {
-  console.log("sessions list: not yet implemented")
-  console.log("Global options:", globalOpts)
-  console.log("List options:", listOpts)
+): Promise<void> {
+  // Load session records from the data layer
+  // If a project filter is provided, pass it to the loader
+  let sessions = await loadSessionRecords({
+    root: globalOpts.root,
+    projectId: listOpts.project,
+  })
+
+  // Apply limit cap (default 200)
+  sessions = sessions.slice(0, globalOpts.limit)
+
+  // Output the sessions using the appropriate formatter
+  const outputOpts = getOutputOptions(globalOpts)
+  printSessionsOutput(sessions, outputOpts)
 }
 
 /**

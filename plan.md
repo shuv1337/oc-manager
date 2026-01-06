@@ -246,7 +246,10 @@
       - `--project` and `--search` defined in `src/cli/commands/sessions.ts` (lines 84-85)
       - `--sort` and `--limit` are global options in `src/cli/index.ts` (lines 93-101)
       - All options properly passed to `handleSessionsList()` via `collectOptions()` and `parseGlobalOptions()`
-- [ ] Implement loading session records for all projects.
+- [x] Implement loading session records for all projects.
+      - Updated `handleSessionsList()` in `src/cli/commands/sessions.ts` to use `loadSessionRecords()` from `opencode-data`
+      - Wired output through `printSessionsOutput()` from `output.ts`
+      - Supports json, ndjson, and table output formats via `--format` flag
 - [ ] Implement project filter for sessions list.
 - [ ] Implement fuzzy session search using `src/lib/search.ts`.
 - [ ] Implement `--sort` by updated/created for sessions list.
