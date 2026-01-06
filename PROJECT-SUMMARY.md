@@ -153,7 +153,7 @@ How To Run
 ### TUI Keys
 - Global: `Tab`/`1`/`2` switch tabs, `/` search, `X` clear search, `R` reload, `Q` quit, `?/H` help
 - Projects: `Space` select, `A` select all, `M` toggle missing, `D` delete, `Enter` view sessions, `Esc` clear selection
-- Sessions: `Space` select, `S` sort, `D` delete, `Y` copy ID, `Shift+R` rename, `M` move, `P` copy, `C` clear filter
+- Sessions: `Space` select, `A` select all, `S` sort, `V` view chat, `F` search chats, `Shift+R` rename, `M` move, `P` copy, `Y` copy ID, `C` clear filter, `D` delete, `Enter` details, `Esc` clear selection
 
 ### Optional
 - tmux: `tmux new -s opencode-manager 'bun run tui'`

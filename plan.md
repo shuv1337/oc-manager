@@ -345,7 +345,7 @@ When documentation and code conflict, resolve using this priority:
 | HELP-001 | src/tui/args.ts:38-50 | Sessions `A` key (select all) implemented but undocumented | Add to printUsage() |
 | ~~HELP-002~~ | ~~PROJECT-SUMMARY.md:154~~ | ~~Missing `H` as help alternative~~ | ~~Add `?/H`~~ ✅ DONE |
 | ~~HELP-003~~ | ~~PROJECT-SUMMARY.md:155~~ | ~~Projects keys missing `Esc`~~ | ~~Add key binding~~ ✅ DONE |
-| HELP-004 | PROJECT-SUMMARY.md:156 | Sessions keys missing `A`, `V`, `F`, `Enter`, `Esc` | Add key bindings |
+| ~~HELP-004~~ | ~~PROJECT-SUMMARY.md:156~~ | ~~Sessions keys missing `A`, `V`, `F`, `Enter`, `Esc`~~ | ~~Add key bindings~~ ✅ DONE |
 
 ### Priority 4: Minor Documentation Gaps (User Impact: LOW)
 | ID | Location | Issue | Fix |
@@ -353,10 +353,10 @@ When documentation and code conflict, resolve using this priority:
 | MINOR-001 | tests/fixtures/README.md | Legacy fallback paths not documented | Add legacy paths section (optional) |
 
 ### Summary Statistics
-- **Total Discrepancies**: 14 (7 fixed)
+- **Total Discrepancies**: 14 (8 fixed)
 - **Priority 1 (Requirements)**: 2 (2 fixed)
 - **Priority 2 (Missing Docs)**: 7 (3 fixed)
-- **Priority 3 (Help Text)**: 4 (2 fixed)
+- **Priority 3 (Help Text)**: 4 (3 fixed)
 - **Priority 4 (Minor)**: 1 (0 fixed)
 
 ---
