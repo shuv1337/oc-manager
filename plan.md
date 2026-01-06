@@ -496,7 +496,12 @@
       - Tests verify error messages mention --yes and --dry-run
       - Tests verify files are not modified on usage error
       - Tests verify --dry-run bypasses --yes requirement
-- [ ] Add tests for missing resources returning exit code 3.
+- [x] Add tests for missing resources returning exit code 3.
+      - Added 33 tests in `tests/cli/exit-codes.test.ts` under `describe("Exit Code 3: Missing Resources")`
+      - Tests cover: projects delete, sessions delete, sessions rename, sessions move, sessions copy, tokens session, tokens project
+      - Tests verify exit code 3 across json/ndjson/table formats
+      - Tests verify error messages mention the missing resource type (project/session)
+      - Tests verify --dry-run also returns exit code 3 for non-existent resources
 - [ ] Add tests for file operation failures returning exit code 4.
 
 ## Phase 4 - Chat Commands

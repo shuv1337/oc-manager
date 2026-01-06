@@ -200,3 +200,243 @@ describe("Exit Code 2: Usage Errors", () => {
     })
   })
 })
+
+// ========================
+// Exit Code 3: Missing Resources
+// ========================
+
+describe("Exit Code 3: Missing Resources", () => {
+  describe("projects delete with non-existent ID", () => {
+    it("returns exit code 3", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id nonexistent_project --yes --root ${FIXTURE_STORE_ROOT}`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("returns exit code 3 with --format json", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id nonexistent_project --yes --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("outputs error mentioning project not found in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id nonexistent_project --yes --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/project.*not found|not found.*project/)
+    })
+
+    it("returns exit code 3 with --dry-run", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id nonexistent_project --root ${FIXTURE_STORE_ROOT} --dry-run`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+  })
+
+  describe("sessions delete with non-existent ID", () => {
+    it("returns exit code 3", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session nonexistent_session --yes --root ${FIXTURE_STORE_ROOT}`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("returns exit code 3 with --format json", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session nonexistent_session --yes --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("outputs error mentioning session not found in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session nonexistent_session --yes --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/session.*not found|not found.*session/)
+    })
+
+    it("returns exit code 3 with --dry-run", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session nonexistent_session --root ${FIXTURE_STORE_ROOT} --dry-run`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+  })
+
+  describe("sessions rename with non-existent ID", () => {
+    it("returns exit code 3", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions rename --session nonexistent_session --title "New Title" --root ${FIXTURE_STORE_ROOT}`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("returns exit code 3 with --format json", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions rename --session nonexistent_session --title "New Title" --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("outputs error mentioning session not found in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions rename --session nonexistent_session --title "New Title" --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/session.*not found|not found.*session/)
+    })
+  })
+
+  describe("sessions move with non-existent session ID", () => {
+    it("returns exit code 3", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions move --session nonexistent_session --to proj_present --root ${FIXTURE_STORE_ROOT}`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("outputs error mentioning session not found in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions move --session nonexistent_session --to proj_present --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/session.*not found|not found.*session/)
+    })
+  })
+
+  describe("sessions move with non-existent project ID", () => {
+    it("returns exit code 3", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions move --session session_parser_fix --to nonexistent_project --root ${FIXTURE_STORE_ROOT}`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("outputs error mentioning project not found in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions move --session session_parser_fix --to nonexistent_project --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/project.*not found|not found.*project/)
+    })
+  })
+
+  describe("sessions copy with non-existent session ID", () => {
+    it("returns exit code 3", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions copy --session nonexistent_session --to proj_present --root ${FIXTURE_STORE_ROOT}`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("outputs error mentioning session not found in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions copy --session nonexistent_session --to proj_present --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/session.*not found|not found.*session/)
+    })
+  })
+
+  describe("sessions copy with non-existent project ID", () => {
+    it("returns exit code 3", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions copy --session session_parser_fix --to nonexistent_project --root ${FIXTURE_STORE_ROOT}`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("outputs error mentioning project not found in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions copy --session session_parser_fix --to nonexistent_project --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/project.*not found|not found.*project/)
+    })
+  })
+
+  describe("tokens session with non-existent session ID", () => {
+    it("returns exit code 3", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts tokens session --session nonexistent_session --root ${FIXTURE_STORE_ROOT}`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("returns exit code 3 with --format json", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts tokens session --session nonexistent_session --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("outputs error mentioning session not found in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts tokens session --session nonexistent_session --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/session.*not found|not found.*session/)
+    })
+  })
+
+  describe("tokens project with non-existent project ID", () => {
+    it("returns exit code 3", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts tokens project --project nonexistent_project --root ${FIXTURE_STORE_ROOT}`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("returns exit code 3 with --format json", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts tokens project --project nonexistent_project --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+    })
+
+    it("outputs error mentioning project not found in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts tokens project --project nonexistent_project --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow()
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/project.*not found|not found.*project/)
+    })
+  })
+
+  describe("table format output for missing resources", () => {
+    it("projects delete outputs readable error in table format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id nonexistent_project --yes --root ${FIXTURE_STORE_ROOT} --format table`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+      const output = result.stderr.toString()
+      expect(output).toContain("Error")
+    })
+
+    it("sessions delete outputs readable error in table format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session nonexistent_session --yes --root ${FIXTURE_STORE_ROOT} --format table`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+      const output = result.stderr.toString()
+      expect(output).toContain("Error")
+    })
+
+    it("tokens session outputs readable error in table format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts tokens session --session nonexistent_session --root ${FIXTURE_STORE_ROOT} --format table`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+      const output = result.stderr.toString()
+      expect(output).toContain("Error")
+    })
+
+    it("tokens project outputs readable error in table format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts tokens project --project nonexistent_project --root ${FIXTURE_STORE_ROOT} --format table`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+      const output = result.stderr.toString()
+      expect(output).toContain("Error")
+    })
+  })
+
+  describe("ndjson format output for missing resources", () => {
+    it("projects delete outputs error in ndjson format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id nonexistent_project --yes --root ${FIXTURE_STORE_ROOT} --format ndjson`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+      const output = result.stderr.toString().trim()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+    })
+
+    it("sessions delete outputs error in ndjson format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session nonexistent_session --yes --root ${FIXTURE_STORE_ROOT} --format ndjson`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+      const output = result.stderr.toString().trim()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+    })
+
+    it("tokens session outputs error in ndjson format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts tokens session --session nonexistent_session --root ${FIXTURE_STORE_ROOT} --format ndjson`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+      const output = result.stderr.toString().trim()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+    })
+
+    it("tokens project outputs error in ndjson format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts tokens project --project nonexistent_project --root ${FIXTURE_STORE_ROOT} --format ndjson`.quiet().nothrow()
+      expect(result.exitCode).toBe(3)
+      const output = result.stderr.toString().trim()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+    })
+  })
+})
