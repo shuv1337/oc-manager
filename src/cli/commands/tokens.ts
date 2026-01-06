@@ -7,6 +7,13 @@
 
 import { Command, type OptionValues } from "commander"
 import { parseGlobalOptions, type GlobalOptions } from "../index"
+import {
+  computeSessionTokenSummary,
+  loadSessionRecords,
+  type SessionRecord,
+} from "../../lib/opencode-data"
+import { getOutputOptions, printTokensOutput } from "../output"
+import { handleError, sessionNotFound } from "../errors"
 
 /**
  * Collect all options from a command and its ancestors.
@@ -50,13 +57,17 @@ export function registerTokensCommands(parent: Command): void {
     .command("session")
     .description("Show token usage for a session")
     .requiredOption("--session <sessionId>", "Session ID to show token usage for")
-    .action(function (this: Command) {
+    .action(async function (this: Command) {
       const globalOpts = parseGlobalOptions(collectOptions(this))
       const cmdOpts = this.opts()
       const sessionOpts: TokensSessionOptions = {
         session: String(cmdOpts.session),
       }
-      handleTokensSession(globalOpts, sessionOpts)
+      try {
+        await handleTokensSession(globalOpts, sessionOpts)
+      } catch (error) {
+        handleError(error, globalOpts.format)
+      }
     })
 
   tokens
@@ -82,15 +93,39 @@ export function registerTokensCommands(parent: Command): void {
 }
 
 /**
+ * Find a session by ID from a list of sessions.
+ * Throws NotFoundError if the session doesn't exist.
+ */
+function findSessionById(
+  sessions: SessionRecord[],
+  sessionId: string
+): SessionRecord {
+  const session = sessions.find((s) => s.sessionId === sessionId)
+  if (!session) {
+    sessionNotFound(sessionId)
+  }
+  return session
+}
+
+/**
  * Handle the tokens session command.
  */
-function handleTokensSession(
+async function handleTokensSession(
   globalOpts: GlobalOptions,
   sessionOpts: TokensSessionOptions
-): void {
-  console.log("tokens session: not yet implemented")
-  console.log("Global options:", globalOpts)
-  console.log("Session options:", sessionOpts)
+): Promise<void> {
+  // Load all sessions to find the one we want
+  const sessions = await loadSessionRecords({ root: globalOpts.root })
+
+  // Find the session by ID
+  const session = findSessionById(sessions, sessionOpts.session)
+
+  // Compute token summary for the session
+  const summary = await computeSessionTokenSummary(session, globalOpts.root)
+
+  // Output the result
+  const outputOpts = getOutputOptions(globalOpts)
+  printTokensOutput(summary, outputOpts.format)
 }
 
 /**

@@ -286,7 +286,11 @@
       - Verifies CLI ordering matches TUI logic: score desc -> time desc -> sessionId asc
 
 ### Tokens
-- [ ] Add `tokens session` subcommand with `--session`.
+- [x] Add `tokens session` subcommand with `--session`.
+      - Implemented `handleTokensSession()` in `src/cli/commands/tokens.ts`
+      - Uses `loadSessionRecords()` to find session, `computeSessionTokenSummary()` for token data
+      - Handles session not found with exit code 3 via `sessionNotFound()` helper
+      - Outputs via `printTokensOutput()` supporting json/ndjson/table formats
 - [ ] Add `tokens project` subcommand with `--project`.
 - [ ] Add `tokens global` subcommand with no args.
 - [ ] Implement session token summary using existing token helpers.
