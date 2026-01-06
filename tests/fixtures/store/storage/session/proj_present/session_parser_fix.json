@@ -1,0 +1,11 @@
+{
+  "id": "session_parser_fix",
+  "projectID": "proj_present",
+  "directory": "tests/fixtures/worktrees/my-present-project",
+  "title": "Fix bug in parser",
+  "version": "1.0.0",
+  "time": {
+    "created": 1704067200000,
+    "updated": 1704153600000
+  }
+}
