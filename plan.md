@@ -149,7 +149,13 @@
       - Added `printNdjson()` and `streamPrintNdjson()` for stdout output
       - Handles Date serialization to ISO strings (matching JSON formatter)
       - Added tests in `tests/cli/formatters/ndjson.test.ts` (14 tests)
-- [ ] Create `src/cli/formatters/table.ts` with column definitions for `projects list`.
+- [x] Create `src/cli/formatters/table.ts` with column definitions for `projects list`.
+      - Created table formatter with `truncate()`, `pad()`, `formatCell()`, `formatRow()`, `formatTable()` utilities
+      - Added `ColumnDefinition<T>` type with header, width, align, accessor, format properties
+      - Added `projectListColumns` and `projectListColumnsCompact` column definitions for projects
+      - Added `formatProjectsTable()` and `printProjectsTable()` convenience functions
+      - Added `formatDateForTable()` and `formatProjectState()` helper formatters
+      - Added comprehensive tests in `tests/cli/formatters/table.test.ts` (44 tests)
 - [ ] Extend table formatter for `sessions list` columns and truncation.
 - [ ] Extend table formatter for `chat list` columns and truncation.
 - [ ] Extend table formatter for `tokens` summary formatting.
