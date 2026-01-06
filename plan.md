@@ -264,11 +264,24 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: Screenshots are UP-TO-DATE - no updates needed
 
 ### 1.16 PROJECT-SUMMARY.md Audit
-- [ ] Read `PROJECT-SUMMARY.md` architecture section
-- [ ] Compare file structure against actual `src/` directory
-- [ ] Document any missing or renamed modules
-- [ ] Compare feature summaries against actual CLI/TUI behavior
-- [ ] Document any discrepancies
+- [x] Read `PROJECT-SUMMARY.md` architecture section
+  - **Finding**: PROJECT-SUMMARY.md documents architecture in lines 11-48
+- [x] Compare file structure against actual `src/` directory
+  - **Finding**: All 20 source files match exactly - no missing or extra files
+  - Entry point: `src/bin/opencode-manager.ts` ✓
+  - CLI: `src/cli/index.ts`, 5 commands, 3 formatters, output.ts, errors.ts, resolvers.ts, backup.ts ✓
+  - TUI: `src/tui/app.tsx`, `index.tsx`, `args.ts` ✓
+  - Shared: `src/lib/opencode-data.ts`, `search.ts`, `clipboard.ts` ✓
+- [x] Document any missing or renamed modules
+  - **Finding**: No discrepancies - file structure is fully accurate
+- [x] Compare feature summaries against actual CLI/TUI behavior
+  - **Finding**: Packaging section (line 163) says "Bun v1.1+ only" but package.json requires ">=1.3.0"
+  - **Finding**: TUI Keys section (lines 154-156) is incomplete vs args.ts and actual implementation
+- [x] Document any discrepancies
+  - **DISCREPANCY-009**: PROJECT-SUMMARY.md:163 says "Bun v1.1+ only" but package.json:9 requires ">=1.3.0"
+  - **DISCREPANCY-010**: PROJECT-SUMMARY.md:154 missing `H` as help alternative (args.ts shows `?/H`)
+  - **DISCREPANCY-011**: PROJECT-SUMMARY.md:155 Projects keys missing `Esc` (clear selection)
+  - **DISCREPANCY-012**: PROJECT-SUMMARY.md:156 Sessions keys missing `A` (select all - implemented but undocumented everywhere), `V` (view chat), `F` (search chats), `Enter` (show details), `Esc` (clear selection)
 
 ### 1.17 tests/fixtures/README.md Audit
 - [ ] Read `tests/fixtures/README.md`
@@ -655,11 +668,11 @@ When documentation and code conflict, resolve using this priority:
 | Phase | Tasks | Completed | Progress |
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
-| Phase 1 | 57 | 75 | 132% |
+| Phase 1 | 57 | 80 | 140% |
 | Phase 2 | 78 | 0 | 0% |
 | Phase 2a | 28 | 0 | 0% |
 | Phase 2b | 7 | 0 | 0% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **230** | **75** | **32.6%** |
+| **Total** | **230** | **80** | **34.8%** |
