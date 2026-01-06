@@ -1,11 +1,14 @@
 /**
- * Tests for `sessions list` CLI command output.
+ * Tests for `sessions list` and `sessions delete` CLI command output.
  *
  * Uses fixture store at tests/fixtures/store to verify command output formats.
  */
 
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, beforeEach, afterEach } from "bun:test";
 import { $ } from "bun";
+import { promises as fs } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { FIXTURE_STORE_ROOT } from "../../helpers";
 
 describe("sessions list --format json", () => {
@@ -347,5 +350,185 @@ describe("sessions list search order matches TUI", () => {
     // session_add_tests has later updatedAt, so it comes first
     expect(parsed.data[0].sessionId).toBe("session_add_tests");
     expect(parsed.data[1].sessionId).toBe("session_parser_fix");
+  });
+});
+
+describe("sessions delete --dry-run", () => {
+  it("outputs dry-run JSON format with paths to delete", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${FIXTURE_STORE_ROOT} --format json --dry-run`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    // JSON output is wrapped in success envelope
+    expect(parsed).toHaveProperty("ok", true);
+    expect(parsed).toHaveProperty("data");
+    expect(parsed.data).toHaveProperty("dryRun", true);
+    expect(parsed.data).toHaveProperty("operation", "delete");
+    expect(parsed.data).toHaveProperty("resourceType", "session");
+    expect(parsed.data).toHaveProperty("count", 1);
+    expect(parsed.data).toHaveProperty("paths");
+    expect(parsed.data.paths).toBeArray();
+    expect(parsed.data.paths.length).toBe(1);
+  });
+
+  it("includes correct file path in dry-run output", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${FIXTURE_STORE_ROOT} --format json --dry-run`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.paths[0]).toContain("session_add_tests.json");
+  });
+
+  it("outputs dry-run table format with header", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${FIXTURE_STORE_ROOT} --format table --dry-run`.quiet();
+    const output = result.stdout.toString();
+
+    expect(output).toContain("[DRY RUN]");
+    expect(output).toContain("delete");
+    expect(output).toContain("1 session");
+  });
+
+  it("does not actually delete the file", async () => {
+    // Run dry-run delete
+    await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${FIXTURE_STORE_ROOT} --format json --dry-run`.quiet();
+
+    // Verify file still exists by running sessions list
+    const listResult = await $`bun src/bin/opencode-manager.ts sessions list --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const parsed = JSON.parse(listResult.stdout.toString());
+    const sessionIds = parsed.data.map((s: { sessionId: string }) => s.sessionId);
+    expect(sessionIds).toContain("session_add_tests");
+  });
+
+  it("supports prefix matching in dry-run mode", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_add --root ${FIXTURE_STORE_ROOT} --format json --dry-run`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.paths[0]).toContain("session_add_tests.json");
+  });
+
+  it("returns exit code 3 for non-existent session", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions delete --session nonexistent_session --root ${FIXTURE_STORE_ROOT} --format json --dry-run`.quiet().nothrow();
+    
+    expect(result.exitCode).toBe(3);
+  });
+});
+
+describe("sessions delete --backup-dir", () => {
+  let tempDir: string;
+  let tempRoot: string;
+  let tempBackupDir: string;
+
+  beforeEach(async () => {
+    // Create temporary directories for each test
+    tempDir = await fs.mkdtemp(join(tmpdir(), "opencode-test-"));
+    tempRoot = join(tempDir, "store");
+    tempBackupDir = join(tempDir, "backups");
+
+    // Copy fixture store to temp directory
+    await fs.cp(FIXTURE_STORE_ROOT, tempRoot, { recursive: true });
+    await fs.mkdir(tempBackupDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    // Clean up temp directory
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("creates backup before deleting session", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${tempRoot} --format json --yes --backup-dir ${tempBackupDir}`.quiet();
+    
+    expect(result.exitCode).toBe(0);
+
+    // Verify backup directory was created (timestamped subdirectory)
+    const backupContents = await fs.readdir(tempBackupDir);
+    expect(backupContents.length).toBe(1);
+    expect(backupContents[0]).toMatch(/^session_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$/);
+  });
+
+  it("backup contains the session file", async () => {
+    await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${tempRoot} --format json --yes --backup-dir ${tempBackupDir}`.quiet();
+
+    // Find the backup subdirectory
+    const backupContents = await fs.readdir(tempBackupDir);
+    const backupSubdir = join(tempBackupDir, backupContents[0]);
+
+    // The backup preserves structure, so look for the file in the relative path
+    const backupFile = join(backupSubdir, "storage", "session", "proj_present", "session_add_tests.json");
+    const exists = await fs.access(backupFile).then(() => true).catch(() => false);
+    expect(exists).toBe(true);
+  });
+
+  it("deletes the original file after backup", async () => {
+    const originalFile = join(tempRoot, "storage", "session", "proj_present", "session_add_tests.json");
+    
+    // Verify file exists before delete
+    const existsBefore = await fs.access(originalFile).then(() => true).catch(() => false);
+    expect(existsBefore).toBe(true);
+
+    await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${tempRoot} --format json --yes --backup-dir ${tempBackupDir}`.quiet();
+
+    // Verify file is deleted after backup
+    const existsAfter = await fs.access(originalFile).then(() => true).catch(() => false);
+    expect(existsAfter).toBe(false);
+  });
+
+  it("outputs success message with session ID", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${tempRoot} --format json --yes --quiet --backup-dir ${tempBackupDir}`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed).toHaveProperty("ok", true);
+    expect(parsed.data).toHaveProperty("sessionId", "session_add_tests");
+  });
+
+  it("backup preserves directory structure relative to root", async () => {
+    await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${tempRoot} --format json --yes --backup-dir ${tempBackupDir}`.quiet();
+
+    // Find the backup subdirectory
+    const backupContents = await fs.readdir(tempBackupDir);
+    const backupSubdir = join(tempBackupDir, backupContents[0]);
+
+    // Verify the structure: should have storage/session/proj_present/session_add_tests.json
+    const storageDirExists = await fs.access(join(backupSubdir, "storage")).then(() => true).catch(() => false);
+    const sessionDirExists = await fs.access(join(backupSubdir, "storage", "session")).then(() => true).catch(() => false);
+    const projectDirExists = await fs.access(join(backupSubdir, "storage", "session", "proj_present")).then(() => true).catch(() => false);
+    
+    expect(storageDirExists).toBe(true);
+    expect(sessionDirExists).toBe(true);
+    expect(projectDirExists).toBe(true);
+  });
+
+  it("returns exit code 2 when --yes is not provided", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${tempRoot} --format json --backup-dir ${tempBackupDir}`.quiet().nothrow();
+    
+    expect(result.exitCode).toBe(2);
+  });
+});
+
+describe("sessions delete requires --yes", () => {
+  it("returns exit code 2 when --yes is missing", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+    
+    expect(result.exitCode).toBe(2);
+  });
+
+  it("error message mentions --yes flag", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+    // Error output goes to stderr
+    const output = result.stderr.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed).toHaveProperty("ok", false);
+    expect(parsed.error).toContain("--yes");
+  });
+
+  it("suggests using --dry-run in error message", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_add_tests --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+    // Error output goes to stderr
+    const output = result.stderr.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.error).toContain("--dry-run");
   });
 });

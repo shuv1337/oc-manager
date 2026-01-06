@@ -405,14 +405,26 @@
         - Deletion via `deleteSessionMetadata()` from opencode-data layer
         - Proper error handling with exit codes (2=usage, 3=not found, 4=file error)
       - Wrapped handler with `withErrorHandling()` for consistent error output
-- [ ] Implement dry-run path listing for session deletion.
-- [ ] Implement backup copy for session deletion.
-- [ ] Implement deletion using opencode-data layer.
-- [ ] Return exit code 2 when `--yes` is missing.
-- [ ] Return exit code 3 when session id is invalid.
-- [ ] Add test for `sessions delete --dry-run`.
-- [ ] Add test for `sessions delete --backup-dir`.
-- [ ] Add test for `sessions delete` requires `--yes`.
+- [x] Implement dry-run path listing for session deletion.
+      - Already implemented in `handleSessionsDelete()` using `createDryRunResult()` and `printDryRunOutput()`
+- [x] Implement backup copy for session deletion.
+      - Already implemented using `copyToBackupDir()` from backup module
+- [x] Implement deletion using opencode-data layer.
+      - Already implemented using `deleteSessionMetadata()` from opencode-data
+- [x] Return exit code 2 when `--yes` is missing.
+      - Already implemented via `requireConfirmation()` from errors module
+- [x] Return exit code 3 when session id is invalid.
+      - Already implemented via `resolveSessionId()` throwing NotFoundError
+- [x] Add test for `sessions delete --dry-run`.
+      - Added 6 tests in `tests/cli/commands/sessions.test.ts` under "sessions delete --dry-run"
+      - Tests cover: JSON output format/fields, file path, table format, no actual deletion, prefix matching, exit code 3
+- [x] Add test for `sessions delete --backup-dir`.
+      - Added 6 tests in `tests/cli/commands/sessions.test.ts` under "sessions delete --backup-dir"
+      - Tests cover: backup creation, file contents, original deletion, success output, structure preservation
+      - Uses temp directories with beforeEach/afterEach cleanup to avoid modifying fixtures
+- [x] Add test for `sessions delete` requires `--yes`.
+      - Added 3 tests in `tests/cli/commands/sessions.test.ts` under "sessions delete requires --yes"
+      - Tests verify: exit code 2, error mentions --yes flag, error suggests --dry-run
 
 ### Sessions rename
 - [ ] Add `sessions rename` options (`--session`, `--title`).
