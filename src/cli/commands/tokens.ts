@@ -13,11 +13,10 @@ import {
   computeSessionTokenSummary,
   loadProjectRecords,
   loadSessionRecords,
-  type ProjectRecord,
-  type SessionRecord,
 } from "../../lib/opencode-data"
 import { getOutputOptions, printAggregateTokensOutput, printTokensOutput } from "../output"
-import { handleError, projectNotFound, sessionNotFound } from "../errors"
+import { handleError } from "../errors"
+import { findProjectById, findSessionById } from "../resolvers"
 
 /**
  * Collect all options from a command and its ancestors.
@@ -102,36 +101,6 @@ export function registerTokensCommands(parent: Command): void {
         handleError(error, globalOpts.format)
       }
     })
-}
-
-/**
- * Find a session by ID from a list of sessions.
- * Throws NotFoundError if the session doesn't exist.
- */
-function findSessionById(
-  sessions: SessionRecord[],
-  sessionId: string
-): SessionRecord {
-  const session = sessions.find((s) => s.sessionId === sessionId)
-  if (!session) {
-    sessionNotFound(sessionId)
-  }
-  return session
-}
-
-/**
- * Find a project by ID from a list of projects.
- * Throws NotFoundError if the project doesn't exist.
- */
-function findProjectById(
-  projects: ProjectRecord[],
-  projectId: string
-): ProjectRecord {
-  const project = projects.find((p) => p.projectId === projectId)
-  if (!project) {
-    projectNotFound(projectId)
-  }
-  return project
 }
 
 /**

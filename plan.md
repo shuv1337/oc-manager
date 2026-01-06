@@ -318,8 +318,17 @@
       - Tests verify headers, category rows, total row, and labels
 
 ## Phase 3 - Mutating Commands
-- [ ] Add CLI helper to resolve session IDs to session records.
-- [ ] Add CLI helper to resolve project IDs to project records.
+- [x] Add CLI helper to resolve session IDs to session records.
+      - Created `src/cli/resolvers.ts` with `findSessionById()`, `findSessionsByPrefix()`, `resolveSessionId()`
+      - Supports exact matching and optional prefix matching with `allowPrefix` option
+      - Handles ambiguous prefix matches with clear error messages
+      - Returns match metadata (exact vs prefix) and all loaded sessions for reuse
+      - Updated `src/cli/commands/tokens.ts` to use shared resolvers instead of local helpers
+      - Added 34 tests in `tests/cli/resolvers.test.ts`
+- [x] Add CLI helper to resolve project IDs to project records.
+      - Created in same `src/cli/resolvers.ts` module with `findProjectById()`, `findProjectsByPrefix()`, `resolveProjectId()`
+      - Same features as session resolver: exact/prefix matching, ambiguity handling
+      - Tests included in same test file
 - [ ] Add CLI helper to validate `--yes` for destructive operations.
 - [ ] Add CLI helper to emit `--dry-run` planned changes.
 - [ ] Add CLI helper to copy files to `--backup-dir` before delete.
