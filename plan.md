@@ -607,7 +607,14 @@
       - Documents platform support: macOS (pbcopy built-in), Linux (xclip required), Windows (not supported)
       - Includes installation hint for Linux users (apt install xclip)
       - Notes silent failure behavior in TUI vs error message in CLI
-- [ ] Update `PROJECT-SUMMARY.md` with new CLI/TUI architecture.
+- [x] Update `PROJECT-SUMMARY.md` with new CLI/TUI architecture.
+      - Rewrote Architecture section with detailed module breakdown (bin, cli, tui, lib)
+      - Added CLI module structure: commands/, formatters/, output.ts, errors.ts, resolvers.ts, backup.ts
+      - Added TUI module structure: app.tsx, index.tsx, args.ts
+      - Added shared libraries: opencode-data.ts, search.ts, clipboard.ts
+      - Expanded "How To Run" with CLI examples, global options, and exit codes
+      - Split "Work Completed" into TUI and CLI sections
+      - Updated "Outstanding Recommendations" with CLI-specific enhancements
 - [ ] Add integration tests covering projects/sessions/tokens commands.
 - [ ] Add integration tests covering delete/rename/move/copy with dry-run.
 - [ ] Add integration tests covering chat list/show/search.

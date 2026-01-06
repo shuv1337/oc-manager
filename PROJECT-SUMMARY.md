@@ -5,15 +5,47 @@ Overview
 --------
 - Purpose: Inspect, filter, and clean OpenCode metadata stored on disk.
 - Scope: Lists projects and sessions from local storage; supports filtering, search, interactive selection and deletion, and quick navigation between views.
-- UI: Terminal UI built with @opentui/react.
+- Dual interface: Terminal UI (TUI) built with @opentui/react for interactive use, plus a Commander-based CLI for scripting and automation.
 
 Architecture
 ------------
-- Entry: `src/tui/app.tsx` — main TUI app and panels; `src/tui/index.tsx` exports `launchTUI()`.
-- Data layer: `opencode/src/lib/opencode-data.ts` — reads/writes metadata JSON, computes derived fields, formatting helpers.
-- Scripts: `opencode/package.json` → `bun run tui` runs the app.
-- CLI wrapper: `opencode/manage_opencode_projects.py` preserves the legacy entry point, resolves Bun (`--bun` overrides PATH), sets `--root` (defaults to `~/.local/share/opencode`), and forwards any extra args after `--` directly to the TUI.
-- Spec diff script: `opencode/opencode-gen.sh` shells out to `opencode generate`, saves the JSON spec under `~/repos/research/opencode/opencode-<version>-spec.json`, and diffs it against the previous snapshot (prefers `delta`, falls back to `diff`).
+The codebase follows a dual-mode architecture with shared libraries:
+
+### Entry Points
+- `src/bin/opencode-manager.ts` — Main entrypoint; routes to CLI or TUI based on subcommand.
+  - CLI subcommands: `projects`, `sessions`, `chat`, `tokens` → dynamic import of CLI module
+  - TUI mode: no subcommand, or explicit `tui` subcommand → dynamic import of TUI module
+
+### CLI Module (`src/cli/`)
+- `index.ts` — Commander program with global options (`--root`, `--format`, `--limit`, `--sort`, `--yes`, `--dry-run`, `--quiet`, `--clipboard`, `--backup-dir`); exports `runCLI(args)`.
+- `commands/` — Subcommand implementations:
+  - `projects.ts` — `list`, `delete` with dry-run/backup support
+  - `sessions.ts` — `list`, `delete`, `rename`, `move`, `copy` 
+  - `chat.ts` — `list`, `show`, `search` with clipboard support
+  - `tokens.ts` — `session`, `project`, `global` token summaries
+  - `tui.ts` — Launches TUI from CLI context
+- `formatters/` — Output formatters:
+  - `json.ts` — JSON with envelope (`{ok, data, meta}`)
+  - `ndjson.ts` — Newline-delimited JSON for streaming
+  - `table.ts` — Column-aligned tables with truncation
+- `output.ts` — Format selector routing by `--format` flag
+- `errors.ts` — Exit codes (0-4), error classes, validation helpers
+- `resolvers.ts` — ID resolution with exact/prefix matching
+- `backup.ts` — Pre-deletion backup to timestamped directories
+
+### TUI Module (`src/tui/`)
+- `app.tsx` — Main TUI app with Projects, Sessions, Chat panels
+- `index.tsx` — Exports `launchTUI(options)`, `bootstrap(args)`
+- `args.ts` — TUI-specific arg parsing (`--root`, `--help`)
+
+### Shared Libraries (`src/lib/`)
+- `opencode-data.ts` — Data layer: load/save metadata, compute tokens, filtering, formatting
+- `search.ts` — Fuzzy search via fast-fuzzy (sessions) and tokenized search (projects)
+- `clipboard.ts` — Cross-platform clipboard (`pbcopy`/`xclip`)
+
+### Other Files
+- `manage_opencode_projects.py` — Legacy wrapper; routes CLI/TUI via `src/bin/opencode-manager.ts`
+- `opencode-gen.sh` — Spec diff script for OpenCode JSON specs
 
 Metadata Layout & Helpers
 -------------------------
@@ -53,6 +85,7 @@ Key Features
 
 Work Completed
 --------------
+### TUI Features
 - Switched Projects list labels to show path instead of project ID; kept ID in the details panel.
 - Sessions list uses session title prominently; added title to details; updated onSelect/Enter status lines to show title and ID.
 - Redesigned Help screen into two columns with color-coded sections and key chips; removed wall-of-text effect.
@@ -69,17 +102,61 @@ Work Completed
 - Added session move feature (M): select target project, relocate session JSON, update projectID field.
 - Added session copy feature (P): select target project, create new session with generated ID, preserve original.
 
+### CLI Implementation (Phase 1-4)
+- Created Commander-based CLI with global options and subcommand routing.
+- Refactored entrypoint to route CLI vs TUI via dynamic imports.
+- Extracted shared libraries (`clipboard.ts`, `search.ts`) from TUI for CLI reuse.
+- Implemented output formatters: JSON with envelope, NDJSON for streaming, table with truncation.
+- Projects commands: `list` (with `--missing-only`, `--search`), `delete` (with `--dry-run`, `--backup-dir`).
+- Sessions commands: `list` (with `--project`, `--search`, fuzzy matching), `delete`, `rename`, `move`, `copy`.
+- Chat commands: `list` (with `--include-parts`), `show` (by `--message` or `--index`, with `--clipboard`), `search`.
+- Tokens commands: `session`, `project`, `global` summaries with breakdown tables.
+- Error handling with typed exit codes (0-4) and consistent error formatting.
+- ID resolution helpers with exact and prefix matching.
+- Pre-deletion backup to timestamped directories.
+- Comprehensive test suite: 350+ tests covering formatters, commands, resolvers, errors, exit codes.
+
 How To Run
 ----------
-- Zero-install via npm: `bunx opencode-manager [--root /path/to/storage]` (preferred).
-- Local dev: `bun run tui [-- --root /path/to/storage]`.
-- Legacy launcher: `./manage_opencode_projects.py [--root PATH] [--bun /path/to/bun] [-- ...extra TUI args]` keeps older automation working while delegating to Bun.
-- Keys:
-  - Global: `Tab`/`1`/`2` switch tabs, `/` search, `X` clear search, `R` reload, `Q` quit, `?` help
-  - Projects: `Space` select, `A` select all, `M` toggle missing, `D` delete, `Enter` view sessions
-  - Sessions: `Space` select, `S` sort, `D` delete, `Y` copy ID, `Shift+R` rename, `M` move, `P` copy, `C` clear filter
-- Optional tmux usage (when permitted): `tmux new -s opencode-manager 'bun run tui'`
-- CLI help: `bun run tui -- --help` (or `bunx opencode-manager -- --help`, or `manage_opencode_projects.py -- --help`) prints the built-in usage block with key bindings.
+### TUI Mode (Interactive)
+- Zero-install: `bunx opencode-manager [--root /path/to/storage]` (preferred)
+- Local dev: `bun run tui [-- --root /path/to/storage]`
+- Legacy launcher: `./manage_opencode_projects.py [--bun /path/to/bun]`
+- TUI help: `bunx opencode-manager --help` shows key bindings
+
+### CLI Mode (Scripting)
+- Projects: `bunx opencode-manager projects list --format json`
+- Sessions: `bunx opencode-manager sessions list --project <id> --limit 10`
+- Chat: `bunx opencode-manager chat search --query "fix bug" --format ndjson`
+- Tokens: `bunx opencode-manager tokens global --format table`
+- Delete with backup: `bunx opencode-manager sessions delete --session <id> --yes --backup-dir ./backups`
+- Dry run: `bunx opencode-manager projects delete --id <id> --dry-run`
+
+### Global CLI Options
+- `--root <path>` — Metadata store root (default: `~/.local/share/opencode`)
+- `--format <json|ndjson|table>` — Output format (default: `table`)
+- `--limit <n>` — Max records (default: 200)
+- `--sort <updated|created>` — Sort order (default: `updated`)
+- `--yes` — Skip confirmation for destructive ops
+- `--dry-run` — Preview changes without executing
+- `--quiet` — Suppress non-essential output
+- `--clipboard` — Copy output to clipboard
+- `--backup-dir <path>` — Backup before deletion
+
+### Exit Codes
+- 0: Success
+- 1: Internal error
+- 2: Usage/validation error (missing `--yes`, bad args)
+- 3: Resource not found (invalid project/session/message ID)
+- 4: File operation error (backup/delete failure)
+
+### TUI Keys
+- Global: `Tab`/`1`/`2` switch tabs, `/` search, `X` clear search, `R` reload, `Q` quit, `?` help
+- Projects: `Space` select, `A` select all, `M` toggle missing, `D` delete, `Enter` view sessions
+- Sessions: `Space` select, `S` sort, `D` delete, `Y` copy ID, `Shift+R` rename, `M` move, `P` copy, `C` clear filter
+
+### Optional
+- tmux: `tmux new -s opencode-manager 'bun run tui'`
 
 Packaging & Publish Checklist
 -----------------------------
@@ -90,15 +167,14 @@ Packaging & Publish Checklist
 
 Outstanding Recommendations (Not Yet Implemented)
 -------------------------------------------------
-- UI polish
+- TUI polish
   - Colorize project state in list labels (e.g., green for present, red for missing, gray for unknown).
   - Show a small timestamp snippet for Projects rows (created).
   - Add tiny icons or color accents to distinguish created vs updated descriptions in Sessions.
   - Add per-view mini legends with colored key chips under the panels (Projects/Sessions), consistent with the Help styling.
-  - Show filtered counts (e.g., “Showing X of Y”).
+  - Show filtered counts (e.g., "Showing X of Y").
 - Search enhancements
-  - Optional fuzzy matching; toggle to include/exclude `directory` in Sessions/Projects search for more control.
-  - Persist search and sort preferences per tab (and optionally per project filter) during the app run.
+  - Optional fuzzy matching toggle in TUI; persist search and sort preferences per tab.
   - Save last-used search/sort to a small state file and restore on next launch.
 - Accessibility & layout
   - Ensure all active/inactive/focused states have adequate contrast and consistent highlight styles.
@@ -106,10 +182,12 @@ Outstanding Recommendations (Not Yet Implemented)
 - Performance
   - Debounce UI reactions to large search queries; short-circuit expensive filters when query is empty.
 - Testing
-  - Add unit coverage for opencode-data helpers (formatting, parsing, sorting).
-  - Add basic snapshot/E2E tests for rendering key panels and Help using a headless renderer (if available for @opentui).
-- Packaging/Docs
-  - Add a README section specific to the TUI tool, with a short demo, common actions, and troubleshooting.
+  - Add integration tests for CLI commands with real fixture data.
+  - Add basic snapshot/E2E tests for TUI rendering (if headless renderer available for @opentui).
+- CLI enhancements
+  - Shell completion scripts (bash/zsh/fish).
+  - `--json-lines` alias for `--format ndjson` compatibility.
+  - Template/profile support for common option combinations.
 
 Notes
 -----
