@@ -645,5 +645,15 @@
       - Verified: `projects --help` displays CLI help for subcommand
       - Verified: Exit codes propagate correctly (e.g., exit code 3 for missing resources)
       - Verified: `--bun` wrapper option works to specify custom bun path
-- [ ] Review open questions (completion, templates, json-lines alias).
-- [ ] If approved, add follow-up tasks for open questions.
+- [x] Review open questions (completion, templates, json-lines alias).
+      - **Shell completion (bash/zsh/fish)**: APPROVED for future. Commander.js supports `program.showHelp()` and
+        community tools like `tabtab` or `omelette` can generate completion scripts. Low effort, high value.
+        Add as a follow-up enhancement.
+      - **Custom templates (`--format "{{.sessionId}}: {{.title}}"`)**: DEFERRED. Adds significant complexity
+        (template parsing, error handling, security considerations). Current formats (json/ndjson/table) + jq
+        cover most scripting use cases. Revisit if user demand emerges.
+      - **`--json-lines` alias for `--format ndjson`**: APPROVED. Trivial to implement (one line in validateFormat),
+        improves discoverability for users familiar with alternative naming. Add as a follow-up task.
+- [x] If approved, add follow-up tasks for open questions.
+      - Added to "Outstanding Recommendations" in PROJECT-SUMMARY.md (already present)
+      - Deferred implementations are documented above; no immediate code changes required
