@@ -81,12 +81,18 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: No discrepancies - README accurately documents all sessions command flags
 
 ### 1.5 Chat Command Audit
-- [ ] Read `src/cli/commands/chat.ts` lines 80-150
-- [ ] Extract `chat list` flags: `--session`, `--include-parts`
-- [ ] Extract `chat show` flags: `--session`, `--message`, `--index`, uses global `--clipboard`
-- [ ] Extract `chat search` flags: `--query`, `--project`
-- [ ] Compare against README.md chat section
-- [ ] Document any discrepancies
+- [x] Read `src/cli/commands/chat.ts` lines 80-150
+  - **Finding**: Command definitions at lines 86-143
+- [x] Extract `chat list` flags: `--session`, `--include-parts`
+  - **Finding**: `--session <sessionId>` (required), `--include-parts` (default: false) confirmed at lines 89-90
+- [x] Extract `chat show` flags: `--session`, `--message`, `--index`, uses global `--clipboard`
+  - **Finding**: `--session <sessionId>` (required), `-m, --message <messageId>`, `-i, --index <number>`, uses global `--clipboard` confirmed at lines 107-119
+- [x] Extract `chat search` flags: `--query`, `--project`
+  - **Finding**: `-q, --query <query>` (required), `-p, --project <projectId>` confirmed at lines 130-131
+- [x] Compare against README.md chat section
+  - **Finding**: README.md:134-137 documents all commands correctly with all flags
+- [x] Document any discrepancies
+  - **Finding**: No discrepancies - README accurately documents all chat command flags
 
 ### 1.6 Tokens Command Audit
 - [ ] Read `src/cli/commands/tokens.ts` lines 55-100
@@ -560,11 +566,11 @@ When documentation and code conflict, resolve using this priority:
 | Phase | Tasks | Completed | Progress |
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
-| Phase 1 | 54 | 21 | 39% |
+| Phase 1 | 54 | 27 | 50% |
 | Phase 2 | 78 | 0 | 0% |
 | Phase 2a | 28 | 0 | 0% |
 | Phase 2b | 7 | 0 | 0% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **227** | **21** | **9.3%** |
+| **Total** | **227** | **27** | **11.9%** |
