@@ -359,7 +359,18 @@
       - Tests cover: empty list handling, projectId filtering, prefix vs exact match behavior
 
 ### Projects delete
-- [ ] Add `projects delete` options (`--id`, `--yes`, `--dry-run`, `--backup-dir`).
+- [x] Add `projects delete` options (`--id`, `--yes`, `--dry-run`, `--backup-dir`).
+      - Updated `src/cli/commands/projects.ts` with full implementation
+      - Added imports for resolvers, errors, backup, and dry-run output helpers
+      - Extended `ProjectsDeleteOptions` interface with yes, dryRun, backupDir fields
+      - Implemented `handleProjectsDelete()` with:
+        - Project resolution via `resolveProjectId()` with prefix matching
+        - Dry-run path listing via `createDryRunResult()` and `printDryRunOutput()`
+        - Confirmation requirement via `requireConfirmation()`
+        - Backup before delete via `copyToBackupDir()`
+        - Deletion via `deleteProjectMetadata()` from opencode-data layer
+        - Proper error handling with exit codes (2=usage, 3=not found, 4=file error)
+      - Wrapped handler with `withErrorHandling()` for consistent error output
 - [ ] Implement dry-run path listing for project deletion.
 - [ ] Implement backup copy for project deletion.
 - [ ] Implement deletion using opencode-data layer.

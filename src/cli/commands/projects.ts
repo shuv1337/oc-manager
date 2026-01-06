@@ -6,9 +6,23 @@
 
 import { Command, type OptionValues } from "commander"
 import { parseGlobalOptions, type GlobalOptions } from "../index"
-import { loadProjectRecords, filterProjectsByState, type ProjectRecord } from "../../lib/opencode-data"
-import { getOutputOptions, printProjectsOutput } from "../output"
+import {
+  loadProjectRecords,
+  filterProjectsByState,
+  deleteProjectMetadata,
+  type ProjectRecord,
+} from "../../lib/opencode-data"
+import {
+  getOutputOptions,
+  printProjectsOutput,
+  printDryRunOutput,
+  createDryRunResult,
+  printSuccessOutput,
+} from "../output"
 import { tokenizedSearch } from "../../lib/search"
+import { resolveProjectId } from "../resolvers"
+import { requireConfirmation, withErrorHandling, FileOperationError } from "../errors"
+import { copyToBackupDir, formatBackupResult } from "../backup"
 
 /**
  * Collect all options from a command and its ancestors.
@@ -40,6 +54,12 @@ export interface ProjectsListOptions {
 export interface ProjectsDeleteOptions {
   /** Project ID to delete */
   id: string
+  /** Skip confirmation prompt */
+  yes: boolean
+  /** Preview changes without deleting */
+  dryRun: boolean
+  /** Directory to backup files before deletion */
+  backupDir?: string
 }
 
 /**
@@ -67,15 +87,25 @@ export function registerProjectsCommands(parent: Command): void {
 
   projects
     .command("delete")
-    .description("Delete a project")
+    .description("Delete a project's metadata file")
     .requiredOption("--id <projectId>", "Project ID to delete")
-    .action(function (this: Command) {
-      const globalOpts = parseGlobalOptions(collectOptions(this))
+    .option("--yes", "Skip confirmation prompt", false)
+    .option("--dry-run", "Preview changes without deleting", false)
+    .option("--backup-dir <dir>", "Directory to backup files before deletion")
+    .action(async function (this: Command) {
+      const allOpts = collectOptions(this)
+      const globalOpts = parseGlobalOptions(allOpts)
       const cmdOpts = this.opts()
       const deleteOpts: ProjectsDeleteOptions = {
         id: String(cmdOpts.id),
+        yes: Boolean(allOpts.yes ?? cmdOpts.yes),
+        dryRun: Boolean(allOpts.dryRun ?? cmdOpts.dryRun),
+        backupDir: (allOpts.backupDir ?? cmdOpts.backupDir) as string | undefined,
       }
-      handleProjectsDelete(globalOpts, deleteOpts)
+      await withErrorHandling(handleProjectsDelete, getOutputOptions(globalOpts).format)(
+        globalOpts,
+        deleteOpts
+      )
     })
 }
 
@@ -114,12 +144,79 @@ async function handleProjectsList(
 
 /**
  * Handle the projects delete command.
+ *
+ * This command deletes a project's metadata file from the OpenCode storage.
+ * It does NOT delete the actual project directory on disk.
+ *
+ * Exit codes:
+ * - 0: Success (or dry-run completed)
+ * - 2: Usage error (--yes not provided for destructive operation)
+ * - 3: Project not found
+ * - 4: File operation failure (backup or delete failed)
  */
-function handleProjectsDelete(
+async function handleProjectsDelete(
   globalOpts: GlobalOptions,
   deleteOpts: ProjectsDeleteOptions
-): void {
-  console.log("projects delete: not yet implemented")
-  console.log("Global options:", globalOpts)
-  console.log("Delete options:", deleteOpts)
+): Promise<void> {
+  const outputOpts = getOutputOptions(globalOpts)
+
+  // Resolve project ID to a project record
+  const { project } = await resolveProjectId(deleteOpts.id, {
+    root: globalOpts.root,
+    allowPrefix: true,
+  })
+
+  const pathsToDelete = [project.filePath]
+
+  // Handle dry-run mode
+  if (deleteOpts.dryRun) {
+    const dryRunResult = createDryRunResult(pathsToDelete, "delete", "project")
+    printDryRunOutput(dryRunResult, outputOpts.format)
+    return
+  }
+
+  // Require confirmation for destructive operation
+  requireConfirmation(deleteOpts.yes, "Project deletion")
+
+  // Backup files if requested
+  if (deleteOpts.backupDir) {
+    const backupResult = await copyToBackupDir(pathsToDelete, {
+      backupDir: deleteOpts.backupDir,
+      prefix: "project",
+      preserveStructure: true,
+      structureRoot: globalOpts.root,
+    })
+
+    if (backupResult.failed.length > 0) {
+      throw new FileOperationError(
+        `Backup failed for ${backupResult.failed.length} file(s): ${backupResult.failed
+          .map((f) => f.path)
+          .join(", ")}`,
+        "backup"
+      )
+    }
+
+    if (!globalOpts.quiet) {
+      console.log(formatBackupResult(backupResult))
+    }
+  }
+
+  // Perform the deletion
+  const deleteResult = await deleteProjectMetadata([project], { dryRun: false })
+
+  if (deleteResult.failed.length > 0) {
+    throw new FileOperationError(
+      `Failed to delete ${deleteResult.failed.length} file(s): ${deleteResult.failed
+        .map((f) => `${f.path}: ${f.error}`)
+        .join(", ")}`,
+      "delete"
+    )
+  }
+
+  // Output success
+  printSuccessOutput(
+    `Deleted project: ${project.projectId}`,
+    { projectId: project.projectId, deleted: deleteResult.removed },
+    outputOpts.format
+  )
 }
