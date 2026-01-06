@@ -257,7 +257,10 @@
       - Added `buildSessionSearchText()` helper to match TUI behavior (title, sessionId, directory, projectId)
       - Uses `fuzzySearch()` from `src/lib/search.ts` with score-based sorting
       - Results sorted by: score descending, updatedAt descending, sessionId (matching TUI)
-- [ ] Implement `--sort` by updated/created for sessions list.
+- [x] Implement `--sort` by updated/created for sessions list.
+      - Added sorting logic to `handleSessionsList()` for both search and non-search paths
+      - Sorts by `updatedAt` (default) or `createdAt` based on `--sort` flag, descending
+      - Falls back to `createdAt` when `updatedAt` is missing, then `sessionId` for stability
 - [ ] Implement `--limit` cap (default 200) for sessions list.
 - [ ] Wire `sessions list` output through `output.ts`.
 - [ ] Add JSON output test for `sessions list`.

@@ -193,17 +193,35 @@ async function handleSessionsList(
       limit: globalOpts.limit,
     })
     
-    // Sort by score descending, then by updatedAt descending, then by sessionId
+    // Sort by score descending, then by sort field descending, then by sessionId
+    const sortField = globalOpts.sort // "updated" or "created"
     results.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score
-      const aTime = (a.item.updatedAt ?? a.item.createdAt)?.getTime() ?? 0
-      const bTime = (b.item.updatedAt ?? b.item.createdAt)?.getTime() ?? 0
+      const aTime = sortField === "created"
+        ? (a.item.createdAt?.getTime() ?? 0)
+        : ((a.item.updatedAt ?? a.item.createdAt)?.getTime() ?? 0)
+      const bTime = sortField === "created"
+        ? (b.item.createdAt?.getTime() ?? 0)
+        : ((b.item.updatedAt ?? b.item.createdAt)?.getTime() ?? 0)
       if (bTime !== aTime) return bTime - aTime
       return a.item.sessionId.localeCompare(b.item.sessionId)
     })
     
     sessions = results.map((r) => r.item)
   } else {
+    // Sort by the specified sort field (descending), then by sessionId
+    const sortField = globalOpts.sort // "updated" or "created"
+    sessions.sort((a, b) => {
+      const aTime = sortField === "created"
+        ? (a.createdAt?.getTime() ?? 0)
+        : ((a.updatedAt ?? a.createdAt)?.getTime() ?? 0)
+      const bTime = sortField === "created"
+        ? (b.createdAt?.getTime() ?? 0)
+        : ((b.updatedAt ?? b.createdAt)?.getTime() ?? 0)
+      if (bTime !== aTime) return bTime - aTime
+      return a.sessionId.localeCompare(b.sessionId)
+    })
+    
     // Apply limit cap (default 200) when no search
     sessions = sessions.slice(0, globalOpts.limit)
   }
