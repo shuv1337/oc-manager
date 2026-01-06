@@ -95,12 +95,18 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: No discrepancies - README accurately documents all chat command flags
 
 ### 1.6 Tokens Command Audit
-- [ ] Read `src/cli/commands/tokens.ts` lines 55-100
-- [ ] Extract `tokens session` flags: `--session`
-- [ ] Extract `tokens project` flags: `--project`
-- [ ] Extract `tokens global` flags: (none)
-- [ ] Compare against README.md tokens section
-- [ ] Document any discrepancies
+- [x] Read `src/cli/commands/tokens.ts` lines 55-100
+  - **Finding**: Command definitions at lines 55-103
+- [x] Extract `tokens session` flags: `--session`
+  - **Finding**: `--session <sessionId>` (required) confirmed at line 62
+- [x] Extract `tokens project` flags: `--project`
+  - **Finding**: `--project <projectId>` (required) confirmed at line 79
+- [x] Extract `tokens global` flags: (none)
+  - **Finding**: No flags, confirmed at lines 93-103
+- [x] Compare against README.md tokens section
+  - **Finding**: README.md:138-141 documents all three commands correctly with all flags
+- [x] Document any discrepancies
+  - **Finding**: No discrepancies - README accurately documents all tokens command flags
 
 ### 1.7 TUI Command Audit
 - [ ] Read `src/cli/commands/tui.ts` line 30
@@ -566,11 +572,11 @@ When documentation and code conflict, resolve using this priority:
 | Phase | Tasks | Completed | Progress |
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
-| Phase 1 | 54 | 27 | 50% |
+| Phase 1 | 54 | 33 | 61% |
 | Phase 2 | 78 | 0 | 0% |
 | Phase 2a | 28 | 0 | 0% |
 | Phase 2b | 7 | 0 | 0% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **227** | **27** | **11.9%** |
+| **Total** | **227** | **33** | **14.5%** |
