@@ -226,8 +226,12 @@
 - [x] Implement `--limit` cap (default 200) for projects list.
       - Added `projects.slice(0, globalOpts.limit)` when no search query is provided
       - Limit is already applied via `tokenizedSearch` options when search is active
-- [ ] Wire `projects list` output through `output.ts`.
-- [ ] Add JSON output test for `projects list`.
+- [x] Wire `projects list` output through `output.ts`.
+      - Already implemented in prior task (lines 111-112 of projects.ts use getOutputOptions/printProjectsOutput)
+- [x] Add JSON output test for `projects list`.
+      - Created `tests/cli/commands/projects.test.ts` with 8 tests
+      - Tests verify JSON envelope, project fields, Date serialization, meta info
+      - Tests verify --missing-only, --search, --limit filters work correctly
 - [ ] Add NDJSON output test for `projects list`.
 - [ ] Add table output test for `projects list`.
 
