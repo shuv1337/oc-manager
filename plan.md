@@ -421,23 +421,40 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: Already documented in README.md:127
 
 ### 2.5 README.md Sessions Commands
-- [ ] Document `sessions list` command
-- [ ] Document `sessions list --project` flag
-- [ ] Document `sessions list --search` flag
-- [ ] Document `sessions delete` command
-- [ ] Document `sessions delete --session` flag
-- [ ] Document `sessions delete --yes` flag
-- [ ] Document `sessions delete --dry-run` flag
-- [ ] Document `sessions delete --backup-dir` flag
-- [ ] Document `sessions rename` command
-- [ ] Document `sessions rename --session` flag
-- [ ] Document `sessions rename --title` flag
-- [ ] Document `sessions move` command
-- [ ] Document `sessions move --session` flag
-- [ ] Document `sessions move --to` flag
-- [ ] Document `sessions copy` command
-- [ ] Document `sessions copy --session` flag
-- [ ] Document `sessions copy --to` flag
+- [x] Document `sessions list` command
+  - **Finding**: Already documented in README.md:129 - verified in Phase 1.4
+- [x] Document `sessions list --project` flag
+  - **Finding**: Already documented in README.md:129 - verified in Phase 1.4
+- [x] Document `sessions list --search` flag
+  - **Finding**: Already documented in README.md:129 - verified in Phase 1.4
+- [x] Document `sessions delete` command
+  - **Finding**: Already documented in README.md:130 - verified in Phase 1.4
+- [x] Document `sessions delete --session` flag
+  - **Finding**: Already documented in README.md:130 - verified in Phase 1.4
+- [x] Document `sessions delete --yes` flag
+  - **Finding**: Already documented in README.md:130 - verified in Phase 1.4
+- [x] Document `sessions delete --dry-run` flag
+  - **Finding**: Already documented in README.md:130 - verified in Phase 1.4
+- [x] Document `sessions delete --backup-dir` flag
+  - **Finding**: Already documented in README.md:130 - verified in Phase 1.4
+- [x] Document `sessions rename` command
+  - **Finding**: Already documented in README.md:131 - verified in Phase 1.4
+- [x] Document `sessions rename --session` flag
+  - **Finding**: Already documented in README.md:131 - verified in Phase 1.4
+- [x] Document `sessions rename --title` flag
+  - **Finding**: Already documented in README.md:131 - verified in Phase 1.4
+- [x] Document `sessions move` command
+  - **Finding**: Already documented in README.md:132 - verified in Phase 1.4
+- [x] Document `sessions move --session` flag
+  - **Finding**: Already documented in README.md:132 - verified in Phase 1.4
+- [x] Document `sessions move --to` flag
+  - **Finding**: Already documented in README.md:132 - verified in Phase 1.4
+- [x] Document `sessions copy` command
+  - **Finding**: Already documented in README.md:133 - verified in Phase 1.4
+- [x] Document `sessions copy --session` flag
+  - **Finding**: Already documented in README.md:133 - verified in Phase 1.4
+- [x] Document `sessions copy --to` flag
+  - **Finding**: Already documented in README.md:133 - verified in Phase 1.4
 
 ### 2.6 README.md Chat Commands
 - [ ] Document `chat list` command
@@ -759,10 +776,10 @@ When documentation and code conflict, resolve using this priority:
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
 | Phase 1 | 59 | 59 | 100% |
-| Phase 2 | 78 | 30 | 38% |
+| Phase 2 | 78 | 47 | 60% |
 | Phase 2a | 28 | 2 | 7% |
 | Phase 2b | 7 | 1 | 14% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **232** | **92** | **39.7%** |
+| **Total** | **232** | **109** | **47.0%** |
