@@ -1,0 +1,10 @@
+{
+  "id": "part_tool_01",
+  "type": "tool",
+  "tool": "Read",
+  "state": {
+    "status": "completed",
+    "input": { "path": "src/utils.ts" },
+    "output": "export function formatDate(d: Date): string { return d.toISOString() }"
+  }
+}

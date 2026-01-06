@@ -1,0 +1,18 @@
+{
+  "id": "msg_assistant_01",
+  "sessionID": "session_add_tests",
+  "role": "assistant",
+  "time": {
+    "created": 1704240200000
+  },
+  "parentID": "msg_user_01",
+  "tokens": {
+    "input": 150,
+    "output": 75,
+    "reasoning": 10,
+    "cache": {
+      "read": 50,
+      "write": 25
+    }
+  }
+}

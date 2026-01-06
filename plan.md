@@ -37,7 +37,7 @@
 - [x] Design a minimal fixture store layout matching the on-disk schema.
 - [x] Add fixture project metadata for at least two projects (one missing).
 - [x] Add fixture session metadata for at least two sessions with distinct titles.
-- [ ] Add fixture chat message data covering text/tool/subtask parts.
+- [x] Add fixture chat message data covering text/tool/subtask parts.
 - [ ] Add a small test helper to resolve fixture root paths.
 - [ ] Add `"test": "bun test"` script to `package.json`.
 - [ ] Add `tests/lib/opencode-data.test.ts` to verify `loadProjectRecords` with fixtures.
