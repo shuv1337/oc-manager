@@ -9,6 +9,7 @@
 import { Command, type OptionValues } from "commander"
 import { resolve } from "node:path"
 import { DEFAULT_ROOT } from "../lib/opencode-data"
+import { registerProjectsCommands } from "./commands/projects"
 
 /**
  * Collect all options from a command and its ancestors.
@@ -105,27 +106,7 @@ function createProgram(): Command {
     .option("--backup-dir <path>", "Directory for backup copies before deletion")
 
   // Projects subcommand group
-  const projects = program
-    .command("projects")
-    .description("Manage OpenCode projects")
-
-  projects
-    .command("list")
-    .description("List projects")
-    .action(function (this: Command) {
-      const globalOpts = parseGlobalOptions(collectOptions(this))
-      console.log("projects list: not yet implemented")
-      console.log("Global options:", globalOpts)
-    })
-
-  projects
-    .command("delete")
-    .description("Delete a project")
-    .action(function (this: Command) {
-      const globalOpts = parseGlobalOptions(collectOptions(this))
-      console.log("projects delete: not yet implemented")
-      console.log("Global options:", globalOpts)
-    })
+  registerProjectsCommands(program)
 
   // Sessions subcommand group
   const sessions = program

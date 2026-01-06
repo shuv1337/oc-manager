@@ -89,7 +89,11 @@
       - Updated all subcommand actions to use `function (this: Command)` pattern
       - Each action calls `parseGlobalOptions(collectOptions(this))` to get typed options
       - Updated TUI subcommand to use `launchTUI({ root })` directly instead of bootstrap
-- [ ] Create `src/cli/commands/projects.ts` with placeholder subcommands.
+- [x] Create `src/cli/commands/projects.ts` with placeholder subcommands.
+      - Created `src/cli/commands/projects.ts` with `registerProjectsCommands()` function
+      - Added `ProjectsListOptions` (--missing-only, --search) and `ProjectsDeleteOptions` (--id) interfaces
+      - Updated `src/cli/index.ts` to import and use the new module
+      - Moved projects subcommands from inline definitions to separate file
 - [ ] Create `src/cli/commands/sessions.ts` with placeholder subcommands.
 - [ ] Create `src/cli/commands/chat.ts` with placeholder subcommands.
 - [ ] Create `src/cli/commands/tokens.ts` with placeholder subcommands.
