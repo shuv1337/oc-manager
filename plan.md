@@ -330,7 +330,15 @@
       - Same features as session resolver: exact/prefix matching, ambiguity handling
       - Tests included in same test file
 - [ ] Add CLI helper to validate `--yes` for destructive operations.
-- [ ] Add CLI helper to emit `--dry-run` planned changes.
+- [x] Add CLI helper to emit `--dry-run` planned changes.
+      - Added `DryRunResult` type with paths, operation, resourceType, and count fields
+      - Added `formatDryRunOutput()` supporting json/ndjson/table formats
+      - Added `printDryRunOutput()` for stdout output
+      - Added `createDryRunResult()` factory helper
+      - JSON format includes dryRun flag, operation, resourceType, count, paths
+      - NDJSON format outputs one line per path with metadata
+      - Table format shows "[DRY RUN]" header with operation and count summary
+      - Added 18 tests in `tests/cli/output.test.ts`
 - [ ] Add CLI helper to copy files to `--backup-dir` before delete.
 - [ ] Add tests for ID resolution helper error cases.
 

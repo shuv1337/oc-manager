@@ -7,7 +7,9 @@
 
 import { describe, expect, it } from "bun:test"
 import {
+  createDryRunResult,
   formatChatOutput,
+  formatDryRunOutput,
   formatErrorOutput,
   formatProjectsOutput,
   formatSessionsOutput,
@@ -15,6 +17,7 @@ import {
   formatTokensOutput,
   formatAggregateTokensOutput,
   getOutputOptions,
+  type DryRunResult,
   type IndexedChatMessage,
 } from "../../src/cli/output"
 import type {
@@ -404,6 +407,157 @@ describe("formatSuccessOutput", () => {
     it("returns plain message", () => {
       const output = formatSuccessOutput("Operation completed", undefined, "table")
       expect(output).toBe("Operation completed")
+    })
+  })
+})
+
+// ========================
+// Dry-Run Output Tests
+// ========================
+
+describe("createDryRunResult", () => {
+  it("creates result with correct fields", () => {
+    const paths = ["/path/to/file1.json", "/path/to/file2.json"]
+    const result = createDryRunResult(paths, "delete", "project")
+
+    expect(result.paths).toEqual(paths)
+    expect(result.operation).toBe("delete")
+    expect(result.resourceType).toBe("project")
+    expect(result.count).toBe(2)
+  })
+
+  it("handles empty paths array", () => {
+    const result = createDryRunResult([], "delete", "session")
+
+    expect(result.paths).toEqual([])
+    expect(result.count).toBe(0)
+  })
+
+  it("supports all operation types", () => {
+    const operations: DryRunResult["operation"][] = ["delete", "backup", "move", "copy"]
+    for (const op of operations) {
+      const result = createDryRunResult(["/path"], op, "session")
+      expect(result.operation).toBe(op)
+    }
+  })
+
+  it("supports all resource types", () => {
+    const resourceTypes: DryRunResult["resourceType"][] = ["project", "session"]
+    for (const rt of resourceTypes) {
+      const result = createDryRunResult(["/path"], "delete", rt)
+      expect(result.resourceType).toBe(rt)
+    }
+  })
+})
+
+describe("formatDryRunOutput", () => {
+  const mockResult: DryRunResult = {
+    paths: [
+      "/home/user/.opencode/storage/project/proj-123.json",
+      "/home/user/.opencode/storage/project/proj-456.json",
+    ],
+    operation: "delete",
+    resourceType: "project",
+    count: 2,
+  }
+
+  describe("json format", () => {
+    it("returns JSON with dryRun flag", () => {
+      const output = formatDryRunOutput(mockResult, "json")
+      const parsed = JSON.parse(output)
+
+      expect(parsed.ok).toBe(true)
+      expect(parsed.data.dryRun).toBe(true)
+    })
+
+    it("includes operation and resource type", () => {
+      const output = formatDryRunOutput(mockResult, "json")
+      const parsed = JSON.parse(output)
+
+      expect(parsed.data.operation).toBe("delete")
+      expect(parsed.data.resourceType).toBe("project")
+    })
+
+    it("includes count and paths", () => {
+      const output = formatDryRunOutput(mockResult, "json")
+      const parsed = JSON.parse(output)
+
+      expect(parsed.data.count).toBe(2)
+      expect(parsed.data.paths).toHaveLength(2)
+      expect(parsed.data.paths[0]).toContain("proj-123.json")
+    })
+  })
+
+  describe("ndjson format", () => {
+    it("returns one line per path", () => {
+      const output = formatDryRunOutput(mockResult, "ndjson")
+      const lines = output.split("\n").filter((l) => l.trim())
+
+      expect(lines).toHaveLength(2)
+    })
+
+    it("each line contains dryRun flag", () => {
+      const output = formatDryRunOutput(mockResult, "ndjson")
+      const lines = output.split("\n").filter((l) => l.trim())
+
+      for (const line of lines) {
+        const parsed = JSON.parse(line)
+        expect(parsed.dryRun).toBe(true)
+        expect(parsed.operation).toBe("delete")
+        expect(parsed.resourceType).toBe("project")
+        expect(parsed.path).toBeDefined()
+      }
+    })
+
+    it("handles empty paths", () => {
+      const emptyResult = createDryRunResult([], "delete", "session")
+      const output = formatDryRunOutput(emptyResult, "ndjson")
+
+      expect(output.trim()).toBe("")
+    })
+  })
+
+  describe("table format", () => {
+    it("includes DRY RUN header", () => {
+      const output = formatDryRunOutput(mockResult, "table")
+
+      expect(output).toContain("[DRY RUN]")
+    })
+
+    it("includes operation and count description", () => {
+      const output = formatDryRunOutput(mockResult, "table")
+
+      expect(output).toContain("delete")
+      expect(output).toContain("2")
+      expect(output).toContain("project(s)")
+    })
+
+    it("lists all paths", () => {
+      const output = formatDryRunOutput(mockResult, "table")
+
+      expect(output).toContain("proj-123.json")
+      expect(output).toContain("proj-456.json")
+    })
+
+    it("handles single item", () => {
+      const singleResult = createDryRunResult(
+        ["/path/to/session.json"],
+        "backup",
+        "session"
+      )
+      const output = formatDryRunOutput(singleResult, "table")
+
+      expect(output).toContain("backup")
+      expect(output).toContain("1 session(s)")
+      expect(output).toContain("session.json")
+    })
+
+    it("handles empty paths", () => {
+      const emptyResult = createDryRunResult([], "move", "session")
+      const output = formatDryRunOutput(emptyResult, "table")
+
+      expect(output).toContain("[DRY RUN]")
+      expect(output).toContain("0 session(s)")
     })
   })
 })

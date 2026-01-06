@@ -479,6 +479,107 @@ export function printSuccessOutput(
 }
 
 // ========================
+// Dry-Run Output
+// ========================
+
+/**
+ * Dry-run result for delete operations.
+ * Mirrors DeleteResult from opencode-data but typed for CLI output.
+ */
+export interface DryRunResult {
+  /** Paths that would be affected */
+  paths: string[]
+  /** Operation that would be performed */
+  operation: "delete" | "backup" | "move" | "copy"
+  /** Resource type (project, session) */
+  resourceType: "project" | "session"
+  /** Count of items affected */
+  count: number
+}
+
+/**
+ * Format dry-run output showing what would be affected.
+ *
+ * @param result - The dry-run result
+ * @param format - Output format
+ * @returns Formatted string
+ */
+export function formatDryRunOutput(
+  result: DryRunResult,
+  format: OutputFormat
+): string {
+  switch (format) {
+    case "json":
+      return formatJsonSuccess(
+        {
+          dryRun: true,
+          operation: result.operation,
+          resourceType: result.resourceType,
+          count: result.count,
+          paths: result.paths,
+        },
+        undefined,
+        { pretty: process.stdout.isTTY }
+      )
+    case "ndjson":
+      return formatNdjson(
+        result.paths.map((path) => ({
+          dryRun: true,
+          operation: result.operation,
+          resourceType: result.resourceType,
+          path,
+        }))
+      )
+    case "table": {
+      const lines: string[] = []
+      lines.push(`[DRY RUN] Would ${result.operation} ${result.count} ${result.resourceType}(s):`)
+      lines.push("")
+      for (const path of result.paths) {
+        lines.push(`  ${path}`)
+      }
+      return lines.join("\n")
+    }
+    default:
+      const _exhaustive: never = format
+      throw new Error(`Unknown format: ${_exhaustive}`)
+  }
+}
+
+/**
+ * Print dry-run output to stdout.
+ *
+ * @param result - The dry-run result
+ * @param format - Output format
+ */
+export function printDryRunOutput(
+  result: DryRunResult,
+  format: OutputFormat
+): void {
+  console.log(formatDryRunOutput(result, format))
+}
+
+/**
+ * Create a DryRunResult from a list of paths.
+ *
+ * @param paths - List of file paths
+ * @param operation - The operation being performed
+ * @param resourceType - The type of resource
+ * @returns DryRunResult object
+ */
+export function createDryRunResult(
+  paths: string[],
+  operation: DryRunResult["operation"],
+  resourceType: DryRunResult["resourceType"]
+): DryRunResult {
+  return {
+    paths,
+    operation,
+    resourceType,
+    count: paths.length,
+  }
+}
+
+// ========================
 // Re-exports for convenience
 // ========================
 
