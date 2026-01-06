@@ -511,7 +511,17 @@
       - Uses temp directories with read-only permissions (555) to simulate failures
 
 ## Phase 4 - Chat Commands
-- [ ] Add `chat list` options (`--session`, `--include-parts`, `--format`).
+- [x] Add `chat list` options (`--session`, `--include-parts`, `--format`).
+      - Updated `src/cli/commands/chat.ts` with full implementation
+      - Added imports for resolvers, errors, and output helpers
+      - Implemented `handleChatList()` with:
+        - Session resolution via `resolveSessionId()` with prefix matching
+        - Message loading via `loadSessionChatIndex()` from opencode-data layer
+        - Optional parts hydration via `hydrateChatMessageParts()`
+        - Limit enforcement via `globalOpts.limit`
+        - 1-based index assignment for display
+      - Wired output through `printChatOutput()` supporting json/ndjson/table formats
+      - Wrapped action with `withErrorHandling()` for consistent error output
 - [ ] Implement chat list to return message index data only.
 - [ ] Implement `--include-parts` to include parts in list output.
 - [ ] Ensure chat list ordering matches TUI (createdAt ascending).

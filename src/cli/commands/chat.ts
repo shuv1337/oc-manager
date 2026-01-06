@@ -7,6 +7,18 @@
 
 import { Command, type OptionValues } from "commander"
 import { parseGlobalOptions, type GlobalOptions } from "../index"
+import {
+  loadSessionChatIndex,
+  hydrateChatMessageParts,
+  type ChatMessage,
+} from "../../lib/opencode-data"
+import { resolveSessionId } from "../resolvers"
+import { withErrorHandling } from "../errors"
+import {
+  getOutputOptions,
+  printChatOutput,
+  type IndexedChatMessage,
+} from "../output"
 
 /**
  * Collect all options from a command and its ancestors.
@@ -67,14 +79,17 @@ export function registerChatCommands(parent: Command): void {
     .description("List messages in a session")
     .requiredOption("--session <sessionId>", "Session ID to list messages from")
     .option("--include-parts", "Include message parts in output", false)
-    .action(function (this: Command) {
+    .action(async function (this: Command) {
       const globalOpts = parseGlobalOptions(collectOptions(this))
       const cmdOpts = this.opts()
       const listOpts: ChatListOptions = {
         session: String(cmdOpts.session),
         includeParts: Boolean(cmdOpts.includeParts),
       }
-      handleChatList(globalOpts, listOpts)
+      await withErrorHandling(handleChatList, globalOpts.format)(
+        globalOpts,
+        listOpts
+      )
     })
 
   chat
@@ -112,14 +127,44 @@ export function registerChatCommands(parent: Command): void {
 
 /**
  * Handle the chat list command.
+ *
+ * Lists messages in a session, ordered by createdAt (ascending).
+ * Optionally includes message parts for full content.
  */
-function handleChatList(
+async function handleChatList(
   globalOpts: GlobalOptions,
   listOpts: ChatListOptions
-): void {
-  console.log("chat list: not yet implemented")
-  console.log("Global options:", globalOpts)
-  console.log("List options:", listOpts)
+): Promise<void> {
+  // Resolve session ID (with prefix matching)
+  const { session } = await resolveSessionId(listOpts.session, {
+    root: globalOpts.root,
+    allowPrefix: true,
+  })
+
+  // Load message index for the session
+  let messages = await loadSessionChatIndex(session.sessionId, globalOpts.root)
+
+  // Hydrate parts if requested
+  if (listOpts.includeParts) {
+    messages = await Promise.all(
+      messages.map((msg) => hydrateChatMessageParts(msg, globalOpts.root))
+    )
+  }
+
+  // Apply limit
+  if (globalOpts.limit && messages.length > globalOpts.limit) {
+    messages = messages.slice(0, globalOpts.limit)
+  }
+
+  // Add 1-based index for display
+  const indexedMessages: IndexedChatMessage[] = messages.map((msg, i) => ({
+    ...msg,
+    index: i + 1,
+  }))
+
+  // Output using configured format
+  const outputOpts = getOutputOptions(globalOpts)
+  printChatOutput(indexedMessages, outputOpts)
 }
 
 /**
