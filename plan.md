@@ -66,7 +66,9 @@
 - [x] Update `launchTUI` to call `parseArgs()` and pass options to TUI.
       - Already implemented: `bootstrap()` calls `parseArgs()` and passes result to `launchTUI(options)`
       - `launchTUI()` accepts `Partial<TUIOptions>` and uses `options?.root ?? DEFAULT_ROOT`
-- [ ] Ensure `bun run tui` uses the new TUI entrypoint.
+- [x] Ensure `bun run tui` uses the new TUI entrypoint.
+      - Already configured: `package.json` has `"tui": "bun src/tui/index.tsx"`
+      - Verified `bun run tui --help` works and displays usage/keybindings
 - [ ] Update `src/bin/opencode-manager.ts` to route CLI vs TUI via dynamic imports.
 - [ ] Confirm TUI default path triggers when no subcommand is provided.
 - [ ] Add `commander@^12.0.0` to `package.json` dependencies.
