@@ -183,10 +183,14 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: No discrepancies - `tests/fixtures/README.md` is fully consistent with `src/lib/opencode-data.ts`
 
 ### 1.11 Exit Codes Audit
-- [ ] Read `src/cli/errors.ts`
-- [ ] Extract exit codes: 0 success, 1 general error, 2 usage error, 3 not found, 4 file operation failure
-- [ ] Check if README.md documents exit codes
-- [ ] Document gap if missing
+- [x] Read `src/cli/errors.ts`
+  - **Finding**: Exit codes defined in `ExitCode` const at lines 24-35
+- [x] Extract exit codes: 0 success, 1 general error, 2 usage error, 3 not found, 4 file operation failure
+  - **Finding**: Confirmed - SUCCESS(0), ERROR(1), USAGE_ERROR(2), NOT_FOUND(3), FILE_ERROR(4)
+- [x] Check if README.md documents exit codes
+  - **Finding**: README.md:219-227 has an Exit Codes section with all 5 codes documented
+- [x] Document gap if missing
+  - **Finding**: No gap - README exit codes section matches `src/cli/errors.ts` exactly
 
 ### 1.12 Output Format Audit
 - [ ] Read `src/cli/output.ts` for format semantics
@@ -607,11 +611,11 @@ When documentation and code conflict, resolve using this priority:
 | Phase | Tasks | Completed | Progress |
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
-| Phase 1 | 54 | 58 | 107% |
+| Phase 1 | 54 | 62 | 115% |
 | Phase 2 | 78 | 0 | 0% |
 | Phase 2a | 28 | 0 | 0% |
 | Phase 2b | 7 | 0 | 0% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **227** | **58** | **25.6%** |
+| **Total** | **227** | **62** | **27.3%** |
