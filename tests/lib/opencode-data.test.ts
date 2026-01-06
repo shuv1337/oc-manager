@@ -8,6 +8,7 @@ import { describe, expect, it } from "bun:test";
 import { FIXTURE_STORE_ROOT } from "../helpers";
 import {
   loadProjectRecords,
+  filterProjectsByState,
   type ProjectRecord,
 } from "../../src/lib/opencode-data";
 
@@ -100,5 +101,35 @@ describe("loadProjectRecords", () => {
       expect(record.filePath).toContain(FIXTURE_STORE_ROOT);
       expect(record.filePath).toContain(record.projectId);
     }
+  });
+});
+
+describe("filterProjectsByState", () => {
+  it("filters projects with missing worktrees", async () => {
+    const records = await loadProjectRecords({ root: FIXTURE_STORE_ROOT });
+    const missing = filterProjectsByState(records, "missing");
+
+    expect(missing).toBeArray();
+    expect(missing.length).toBe(1);
+    expect(missing[0].projectId).toBe("proj_missing");
+    expect(missing[0].state).toBe("missing");
+  });
+
+  it("filters projects with present worktrees", async () => {
+    const records = await loadProjectRecords({ root: FIXTURE_STORE_ROOT });
+    const present = filterProjectsByState(records, "present");
+
+    expect(present).toBeArray();
+    expect(present.length).toBe(1);
+    expect(present[0].projectId).toBe("proj_present");
+    expect(present[0].state).toBe("present");
+  });
+
+  it("returns empty array when no projects match state", async () => {
+    const records = await loadProjectRecords({ root: FIXTURE_STORE_ROOT });
+    const unknown = filterProjectsByState(records, "unknown");
+
+    expect(unknown).toBeArray();
+    expect(unknown.length).toBe(0);
   });
 });

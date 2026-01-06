@@ -41,7 +41,7 @@
 - [x] Add a small test helper to resolve fixture root paths.
 - [x] Add `"test": "bun test"` script to `package.json`.
 - [x] Add `tests/lib/opencode-data.test.ts` to verify `loadProjectRecords` with fixtures.
-- [ ] Add assertion for missing project detection in `tests/lib/opencode-data.test.ts`.
+- [x] Add assertion for missing project detection in `tests/lib/opencode-data.test.ts`.
 - [ ] Run `bun test` and fix any fixture or path issues.
 
 ## Phase 1 - TUI Refactor and CLI Skeleton
