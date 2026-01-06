@@ -9,7 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react"
-import { exec } from "node:child_process"
+import { copyToClipboardSync } from "../lib/clipboard"
 import {
   ProjectRecord,
   SessionRecord,
@@ -135,17 +135,8 @@ function formatAggregateSummaryShort(summary: AggregateTokenSummary): string {
   return base
 }
 
-function copyToClipboard(text: string): void {
-  const cmd = process.platform === "darwin" ? "pbcopy" : "xclip -selection clipboard"
-  const proc = exec(cmd, (error) => {
-    if (error) {
-      // We can't easily notify from here without context, but it's a best effort
-      console.error("Failed to copy to clipboard:", error)
-    }
-  })
-  proc.stdin?.write(text)
-  proc.stdin?.end()
-}
+// Clipboard functionality moved to ../lib/clipboard.ts
+// Use copyToClipboardSyncSync for fire-and-forget clipboard operations
 
 type ChildrenProps = { children: React.ReactNode }
 
@@ -909,7 +900,7 @@ const SessionsPanel = forwardRef<PanelHandle, SessionsPanelProps>(function Sessi
       }
       if (letter === "y") {
         if (currentSession) {
-          copyToClipboard(currentSession.sessionId)
+          copyToClipboardSync(currentSession.sessionId)
           onNotify(`Copied ID ${currentSession.sessionId} to clipboard`)
         }
         return
@@ -1638,7 +1629,7 @@ export const App = ({ root }: { root: string }) => {
       return
     }
     const text = message.parts.map(p => p.text).join('\n\n')
-    copyToClipboard(text)
+    copyToClipboardSync(text)
     notify(`Copied ${text.length} chars to clipboard`)
   }, [notify])
 

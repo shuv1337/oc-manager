@@ -119,8 +119,13 @@
 - [x] Register all command modules from `src/cli/index.ts`.
       - All 5 modules (projects, sessions, chat, tokens, tui) imported and registered
       - Verified via `--help` output for each subcommand
-- [ ] Create `src/lib/clipboard.ts` and move TUI clipboard helper into it.
-- [ ] Update TUI code to call `src/lib/clipboard.ts`.
+- [x] Create `src/lib/clipboard.ts` and move TUI clipboard helper into it.
+      - Created `src/lib/clipboard.ts` with `copyToClipboard()` (Promise-based) and `copyToClipboardSync()` (fire-and-forget)
+      - Uses `pbcopy` on macOS, `xclip -selection clipboard` on Linux
+- [x] Update TUI code to call `src/lib/clipboard.ts`.
+      - Updated `src/tui/app.tsx` to import `copyToClipboardSync` from `../lib/clipboard`
+      - Removed inline `copyToClipboard` function from app.tsx
+      - Removed `exec` import from `node:child_process` (no longer needed)
 - [ ] Update `manage_opencode_projects.py` to detect CLI subcommands and route.
 - [ ] Add a minimal CLI smoke test (help output) to ensure CLI boots.
 
