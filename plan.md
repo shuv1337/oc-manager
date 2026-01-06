@@ -193,12 +193,26 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: No gap - README exit codes section matches `src/cli/errors.ts` exactly
 
 ### 1.12 Output Format Audit
-- [ ] Read `src/cli/output.ts` for format semantics
-- [ ] Read `src/cli/formatters/json.ts` for JSON envelope structure
-- [ ] Document output formats: `json`, `ndjson`, `table`
-- [ ] Document JSON envelope structure and list metadata
-- [ ] Compare against README.md output format section
-- [ ] Document any discrepancies
+- [x] Read `src/cli/output.ts` for format semantics
+  - **Finding**: Three formats defined in `OutputFormat` type at line 59: `json`, `ndjson`, `table`
+  - **Finding**: Format routing via switch statements in domain-specific output functions
+  - **Finding**: JSON auto-detects TTY for pretty-printing (line 103-105)
+- [x] Read `src/cli/formatters/json.ts` for JSON envelope structure
+  - **Finding**: `JsonResponse<T>` interface at lines 21-37 defines envelope structure
+- [x] Document output formats: `json`, `ndjson`, `table`
+  - **Finding**: `json` - Full envelope with `ok`, `data`, `error`, `meta` fields; pretty-prints for TTY
+  - **Finding**: `ndjson` - One JSON object per line, no envelope, compact format
+  - **Finding**: `table` - Human-readable columnar output, default format
+- [x] Document JSON envelope structure and list metadata
+  - **Finding**: Envelope fields: `ok` (boolean), `data` (T), `error` (string), `meta` (object)
+  - **Finding**: Meta fields: `count` (auto-populated for arrays), `limit`, `truncated`
+- [x] Compare against README.md output format section
+  - **Finding**: README.md:147-217 documents all three formats with examples
+  - **Finding**: README shows JSON envelope with `ok`, `data`, `meta.count`
+  - **Finding**: README NDJSON example shows raw records without envelope
+- [x] Document any discrepancies
+  - **DISCREPANCY-005**: README.md doesn't document `meta.limit` or `meta.truncated` fields
+  - **DISCREPANCY-006**: README.md doesn't mention JSON auto-pretty-prints for TTY, compact for pipes
 
 ### 1.13 ID Resolution Behavior Audit
 - [ ] Review projects commands for prefix matching behavior
