@@ -63,14 +63,22 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: No discrepancies - README accurately documents all projects command flags
 
 ### 1.4 Sessions Command Audit
-- [ ] Read `src/cli/commands/sessions.ts` lines 100-200
-- [ ] Extract `sessions list` flags: `--project`, `--search`
-- [ ] Extract `sessions delete` flags: `--session`, `--yes`, `--dry-run`, `--backup-dir`
-- [ ] Extract `sessions rename` flags: `--session`, `--title`
-- [ ] Extract `sessions move` flags: `--session`, `--to`
-- [ ] Extract `sessions copy` flags: `--session`, `--to`
-- [ ] Compare against README.md sessions section
-- [ ] Document any discrepancies
+- [x] Read `src/cli/commands/sessions.ts` lines 100-200
+  - **Finding**: Command definitions at lines 107-198
+- [x] Extract `sessions list` flags: `--project`, `--search`
+  - **Finding**: `-p, --project <projectId>`, `-s, --search <query>` confirmed at lines 110-111
+- [x] Extract `sessions delete` flags: `--session`, `--yes`, `--dry-run`, `--backup-dir`
+  - **Finding**: `--session <sessionId>` (required), `--yes`, `--dry-run`, `--backup-dir <dir>` confirmed at lines 125-128
+- [x] Extract `sessions rename` flags: `--session`, `--title`
+  - **Finding**: `--session <sessionId>` (required), `-t, --title <title>` (required) confirmed at lines 148-149
+- [x] Extract `sessions move` flags: `--session`, `--to`
+  - **Finding**: `--session <sessionId>` (required), `--to <projectId>` (required) confirmed at lines 166-167
+- [x] Extract `sessions copy` flags: `--session`, `--to`
+  - **Finding**: `--session <sessionId>` (required), `--to <projectId>` (required) confirmed at lines 184-185
+- [x] Compare against README.md sessions section
+  - **Finding**: README.md:128-133 documents all commands correctly with all flags
+- [x] Document any discrepancies
+  - **Finding**: No discrepancies - README accurately documents all sessions command flags
 
 ### 1.5 Chat Command Audit
 - [ ] Read `src/cli/commands/chat.ts` lines 80-150
@@ -552,11 +560,11 @@ When documentation and code conflict, resolve using this priority:
 | Phase | Tasks | Completed | Progress |
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
-| Phase 1 | 54 | 13 | 24% |
+| Phase 1 | 54 | 21 | 39% |
 | Phase 2 | 78 | 0 | 0% |
 | Phase 2a | 28 | 0 | 0% |
 | Phase 2b | 7 | 0 | 0% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **227** | **13** | **5.7%** |
+| **Total** | **227** | **21** | **9.3%** |
