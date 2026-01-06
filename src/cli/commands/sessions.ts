@@ -7,9 +7,22 @@
 
 import { Command, type OptionValues } from "commander"
 import { parseGlobalOptions, type GlobalOptions } from "../index"
-import { loadSessionRecords, type SessionRecord } from "../../lib/opencode-data"
-import { getOutputOptions, printSessionsOutput } from "../output"
+import {
+  loadSessionRecords,
+  deleteSessionMetadata,
+  type SessionRecord,
+} from "../../lib/opencode-data"
+import {
+  getOutputOptions,
+  printSessionsOutput,
+  printDryRunOutput,
+  createDryRunResult,
+  printSuccessOutput,
+} from "../output"
 import { fuzzySearch, type SearchCandidate } from "../../lib/search"
+import { resolveSessionId } from "../resolvers"
+import { requireConfirmation, withErrorHandling, FileOperationError } from "../errors"
+import { copyToBackupDir, formatBackupResult } from "../backup"
 
 /**
  * Collect all options from a command and its ancestors.
@@ -41,6 +54,12 @@ export interface SessionsListOptions {
 export interface SessionsDeleteOptions {
   /** Session ID to delete */
   session: string
+  /** Skip confirmation prompt */
+  yes: boolean
+  /** Preview changes without deleting */
+  dryRun: boolean
+  /** Directory to backup files before deletion */
+  backupDir?: string
 }
 
 /**
@@ -98,15 +117,25 @@ export function registerSessionsCommands(parent: Command): void {
 
   sessions
     .command("delete")
-    .description("Delete a session")
+    .description("Delete a session's metadata file")
     .requiredOption("--session <sessionId>", "Session ID to delete")
-    .action(function (this: Command) {
-      const globalOpts = parseGlobalOptions(collectOptions(this))
+    .option("--yes", "Skip confirmation prompt", false)
+    .option("--dry-run", "Preview changes without deleting", false)
+    .option("--backup-dir <dir>", "Directory to backup files before deletion")
+    .action(async function (this: Command) {
+      const allOpts = collectOptions(this)
+      const globalOpts = parseGlobalOptions(allOpts)
       const cmdOpts = this.opts()
       const deleteOpts: SessionsDeleteOptions = {
         session: String(cmdOpts.session),
+        yes: Boolean(allOpts.yes ?? cmdOpts.yes),
+        dryRun: Boolean(allOpts.dryRun ?? cmdOpts.dryRun),
+        backupDir: (allOpts.backupDir ?? cmdOpts.backupDir) as string | undefined,
       }
-      handleSessionsDelete(globalOpts, deleteOpts)
+      await withErrorHandling(handleSessionsDelete, getOutputOptions(globalOpts).format)(
+        globalOpts,
+        deleteOpts
+      )
     })
 
   sessions
@@ -233,14 +262,81 @@ async function handleSessionsList(
 
 /**
  * Handle the sessions delete command.
+ *
+ * This command deletes a session's metadata file from the OpenCode storage.
+ * It does NOT delete associated chat message files (yet).
+ *
+ * Exit codes:
+ * - 0: Success (or dry-run completed)
+ * - 2: Usage error (--yes not provided for destructive operation)
+ * - 3: Session not found
+ * - 4: File operation failure (backup or delete failed)
  */
-function handleSessionsDelete(
+async function handleSessionsDelete(
   globalOpts: GlobalOptions,
   deleteOpts: SessionsDeleteOptions
-): void {
-  console.log("sessions delete: not yet implemented")
-  console.log("Global options:", globalOpts)
-  console.log("Delete options:", deleteOpts)
+): Promise<void> {
+  const outputOpts = getOutputOptions(globalOpts)
+
+  // Resolve session ID to a session record
+  const { session } = await resolveSessionId(deleteOpts.session, {
+    root: globalOpts.root,
+    allowPrefix: true,
+  })
+
+  const pathsToDelete = [session.filePath]
+
+  // Handle dry-run mode
+  if (deleteOpts.dryRun) {
+    const dryRunResult = createDryRunResult(pathsToDelete, "delete", "session")
+    printDryRunOutput(dryRunResult, outputOpts.format)
+    return
+  }
+
+  // Require confirmation for destructive operation
+  requireConfirmation(deleteOpts.yes, "Session deletion")
+
+  // Backup files if requested
+  if (deleteOpts.backupDir) {
+    const backupResult = await copyToBackupDir(pathsToDelete, {
+      backupDir: deleteOpts.backupDir,
+      prefix: "session",
+      preserveStructure: true,
+      structureRoot: globalOpts.root,
+    })
+
+    if (backupResult.failed.length > 0) {
+      throw new FileOperationError(
+        `Backup failed for ${backupResult.failed.length} file(s): ${backupResult.failed
+          .map((f) => f.path)
+          .join(", ")}`,
+        "backup"
+      )
+    }
+
+    if (!globalOpts.quiet) {
+      console.log(formatBackupResult(backupResult))
+    }
+  }
+
+  // Perform the deletion
+  const deleteResult = await deleteSessionMetadata([session], { dryRun: false })
+
+  if (deleteResult.failed.length > 0) {
+    throw new FileOperationError(
+      `Failed to delete ${deleteResult.failed.length} file(s): ${deleteResult.failed
+        .map((f) => `${f.path}: ${f.error}`)
+        .join(", ")}`,
+      "delete"
+    )
+  }
+
+  // Output success
+  printSuccessOutput(
+    `Deleted session: ${session.sessionId}`,
+    { sessionId: session.sessionId, deleted: deleteResult.removed },
+    outputOpts.format
+  )
 }
 
 /**
