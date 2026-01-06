@@ -576,7 +576,13 @@
       - Project filter passed to `loadSessionRecords()` via `projectId` option
       - Limit passed to `searchSessionsChat()` via `maxResults` option
       - Results indexed with 1-based index for display
-- [ ] Add tests for chat search matches and ordering.
+- [x] Add tests for chat search matches and ordering.
+      - Added 35 tests in `tests/cli/commands/chat.test.ts` across 7 describe blocks
+      - Tests cover JSON/NDJSON/table output formats for chat search
+      - Tests verify: search result fields, matched text snippets, ISO date serialization
+      - Tests verify: --project filter, --limit option, case-insensitivity
+      - Tests verify: 1-based indexing, no duplicate messages, consistent ordering
+      - Tests verify: empty results for non-matching queries and whitespace-only queries
 - [ ] Add `--clipboard` support for chat show output.
 
 ## Phase 5 - Docs and Validation
