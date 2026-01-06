@@ -377,3 +377,218 @@ describe("chat list --include-parts", () => {
     }
   });
 });
+
+// =============================================================================
+// chat show command tests
+// =============================================================================
+
+describe("chat show --message", () => {
+  it("shows message by exact message ID", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_user_01 --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data.messageId).toBe("msg_user_01");
+    expect(parsed.data.role).toBe("user");
+  });
+
+  it("shows message by message ID prefix", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_user --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data.messageId).toBe("msg_user_01");
+  });
+
+  it("includes hydrated message parts", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_user_01 --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.parts).toBeArray();
+    expect(parsed.data.parts.length).toBeGreaterThan(0);
+  });
+
+  it("includes previewText computed from parts", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_user_01 --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.previewText).toContain("add unit tests");
+  });
+
+  it("returns exit code 3 for non-existent message ID", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message nonexistent_msg --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+  });
+
+  it("returns exit code 3 for ambiguous message ID prefix", async () => {
+    // "msg_" matches both msg_user_01 and msg_assistant_01
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_ --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+    const output = result.stderr.toString();
+    const parsed = JSON.parse(output);
+    expect(parsed.error).toContain("Ambiguous");
+  });
+
+  it("works with session ID prefix", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add --message msg_user_01 --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data.messageId).toBe("msg_user_01");
+  });
+});
+
+describe("chat show --index", () => {
+  it("shows message by 1-based index", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 1 --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    // Index 1 is the first message (oldest by createdAt) = msg_user_01
+    expect(parsed.data.messageId).toBe("msg_user_01");
+  });
+
+  it("index 2 returns second message", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 2 --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data.messageId).toBe("msg_assistant_01");
+  });
+
+  it("returns exit code 3 for index 0", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 0 --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+  });
+
+  it("returns exit code 3 for index greater than message count", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 100 --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+    const output = result.stderr.toString();
+    const parsed = JSON.parse(output);
+    expect(parsed.error).toContain("out of range");
+  });
+
+  it("returns exit code 3 for negative index", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index -1 --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+  });
+});
+
+describe("chat show validation", () => {
+  it("returns exit code 2 when neither --message nor --index is provided", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(2);
+    const output = result.stderr.toString();
+    const parsed = JSON.parse(output);
+    expect(parsed.error).toContain("Either --message");
+  });
+
+  it("returns exit code 2 when both --message and --index are provided", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_user_01 --index 1 --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(2);
+    const output = result.stderr.toString();
+    const parsed = JSON.parse(output);
+    expect(parsed.error).toContain("Cannot use both");
+  });
+
+  it("returns exit code 3 for non-existent session", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session nonexistent_session --message msg_user_01 --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+  });
+
+  it("returns exit code 3 for empty session (no messages)", async () => {
+    // session_parser_fix exists but has no messages in fixture
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_parser_fix --index 1 --root ${FIXTURE_STORE_ROOT} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+    const output = result.stderr.toString();
+    const parsed = JSON.parse(output);
+    expect(parsed.error).toContain("no messages");
+  });
+});
+
+describe("chat show output formats", () => {
+  it("outputs valid JSON with success envelope", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 1 --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed).toHaveProperty("ok", true);
+    expect(parsed).toHaveProperty("data");
+    expect(parsed.data).toHaveProperty("messageId");
+  });
+
+  it("outputs valid NDJSON (single line)", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 1 --root ${FIXTURE_STORE_ROOT} --format ndjson`.quiet();
+    const output = result.stdout.toString().trim();
+    const lines = output.split("\n");
+
+    // Single message = single line
+    expect(lines.length).toBe(1);
+    const parsed = JSON.parse(lines[0]);
+    expect(parsed).toHaveProperty("messageId");
+  });
+
+  it("outputs formatted table with message details", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 1 --root ${FIXTURE_STORE_ROOT} --format table`.quiet();
+    const output = result.stdout.toString();
+
+    expect(output).toContain("Message ID:");
+    expect(output).toContain("Role:");
+    expect(output).toContain("Content:");
+  });
+
+  it("table format shows full message content", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_user_01 --root ${FIXTURE_STORE_ROOT} --format table`.quiet();
+    const output = result.stdout.toString();
+
+    expect(output).toContain("add unit tests");
+  });
+});
+
+describe("chat show full text content", () => {
+  it("includes combined full text from all parts", async () => {
+    // msg_assistant_01 has multiple parts: text and tool
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_assistant_01 --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.parts).toBeArray();
+    expect(parsed.data.parts.length).toBeGreaterThan(1);
+  });
+
+  it("previewText includes text content from parts", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_assistant_01 --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.previewText).toContain("help you add unit tests");
+  });
+
+  it("includes parts with different types (text, tool, subtask)", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_assistant_01 --root ${FIXTURE_STORE_ROOT} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    const partTypes = parsed.data.parts.map((p: { type: string }) => p.type);
+    expect(partTypes).toContain("text");
+    // Also has tool and subtask parts
+    expect(parsed.data.parts.length).toBeGreaterThanOrEqual(2);
+  });
+});

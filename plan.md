@@ -545,11 +545,23 @@
       - Updated `ChatShowOptions` interface with clipboard field
       - Uses `copyToClipboard()` from `src/lib/clipboard.ts`
       - Wrapped action with `withErrorHandling()` for consistent error output
-- [ ] Implement chat show by `--message` id.
-- [ ] Implement chat show by `--index` (1-based).
-- [ ] Return exit code 3 when message id or index is invalid.
-- [ ] Add tests for chat show by message and by index.
-- [ ] Add test for chat show output includes combined full text.
+- [x] Implement chat show by `--message` id.
+      - Uses exact match or prefix matching for message IDs
+      - Throws NotFoundError for non-existent or ambiguous message IDs
+      - Hydrates message parts to get full content
+- [x] Implement chat show by `--index` (1-based).
+      - Index 1 = oldest message (first in createdAt ascending order)
+      - Validates index bounds (1 to message count)
+      - Throws NotFoundError for out-of-range indexes
+- [x] Return exit code 3 when message id or index is invalid.
+      - NotFoundError thrown for: non-existent message, ambiguous prefix, out-of-range index, empty session
+      - UsageError (exit code 2) thrown for missing/conflicting options
+- [x] Add tests for chat show by message and by index.
+      - Added 25 tests across 5 describe blocks in `tests/cli/commands/chat.test.ts`
+      - Tests cover: exact/prefix message ID matching, 1-based indexing, error cases, validation
+- [x] Add test for chat show output includes combined full text.
+      - Tests verify parts array is hydrated with multiple part types (text, tool, subtask)
+      - Tests verify previewText is computed from parts content
 - [ ] Add `chat search` options (`--query`, `--project`, `--limit`, `--format`).
 - [ ] Implement chat search using `searchSessionsChat`.
 - [ ] Apply project filter and limit to chat search results.
