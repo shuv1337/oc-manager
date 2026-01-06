@@ -155,6 +155,33 @@ opencode-manager tui --root ~/.local/share/opencode
 
 Use the explicit `tui` subcommand when you want to be clear about intent in scripts or when combining with other options. Note that `tui --help` shows the TUI help screen (key bindings), not Commander CLI help.
 
+#### Help System
+
+The manager uses a dual help system depending on context:
+
+| Command | Help Type | Content |
+|---------|-----------|---------|
+| `opencode-manager --help` | TUI help | Key bindings and TUI usage |
+| `opencode-manager -h` | TUI help | Same as `--help` |
+| `opencode-manager tui --help` | TUI help | Key bindings (routes to TUI help) |
+| `opencode-manager projects --help` | CLI help | Commander subcommand help |
+| `opencode-manager sessions --help` | CLI help | Commander subcommand help |
+| `opencode-manager chat --help` | CLI help | Commander subcommand help |
+| `opencode-manager tokens --help` | CLI help | Commander subcommand help |
+
+**Why?** The root command defaults to launching the TUI, so `--help` shows TUI-relevant information (key bindings). CLI subcommands use standard Commander.js help showing options and usage.
+
+To see all CLI subcommands, use any subcommand with `--help`:
+
+```bash
+# Shows TUI key bindings
+opencode-manager --help
+
+# Shows CLI subcommand help with options
+opencode-manager projects --help
+opencode-manager projects list --help
+```
+
 #### Output Format Examples
 
 The CLI supports three output formats via `--format`:

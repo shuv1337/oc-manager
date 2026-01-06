@@ -496,11 +496,11 @@ When documentation and code conflict, resolve using this priority:
   - **Done**: Added "TUI Subcommand" section after Commands Overview explaining explicit `tui` invocation, equivalence to default behavior, and note about `tui --help` showing TUI help
 
 ### 2.9 README.md Help Routing
-- [ ] Add section explaining dual help system
-- [ ] Document `opencode-manager --help` shows TUI help
-- [ ] Document `opencode-manager -h` shows TUI help
-- [ ] Document `opencode-manager <cmd> --help` shows CLI help
-- [ ] Document `opencode-manager tui --help` shows TUI help
+- [x] Add section explaining dual help system
+- [x] Document `opencode-manager --help` shows TUI help
+- [x] Document `opencode-manager -h` shows TUI help
+- [x] Document `opencode-manager <cmd> --help` shows CLI help
+- [x] Document `opencode-manager tui --help` shows TUI help
 
 ### 2.10 README.md Output Formats
 - [ ] Document `json` format with envelope structure
@@ -788,10 +788,10 @@ When documentation and code conflict, resolve using this priority:
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
 | Phase 1 | 59 | 59 | 100% |
-| Phase 2 | 78 | 67 | 86% |
+| Phase 2 | 78 | 72 | 92% |
 | Phase 2a | 28 | 2 | 7% |
 | Phase 2b | 7 | 1 | 14% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **232** | **129** | **55.6%** |
+| **Total** | **232** | **134** | **57.8%** |
