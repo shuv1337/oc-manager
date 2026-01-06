@@ -489,7 +489,13 @@
       - Tests cover: prefix matching, exit code 3 for invalid session/project, same-project copy
 
 ### Exit codes
-- [ ] Add tests for usage errors returning exit code 2.
+- [x] Add tests for usage errors returning exit code 2.
+      - Created `tests/cli/exit-codes.test.ts` with 22 comprehensive tests
+      - Tests cover: projects delete, sessions delete, sessions rename
+      - Tests verify exit code 2 across json/ndjson/table formats
+      - Tests verify error messages mention --yes and --dry-run
+      - Tests verify files are not modified on usage error
+      - Tests verify --dry-run bypasses --yes requirement
 - [ ] Add tests for missing resources returning exit code 3.
 - [ ] Add tests for file operation failures returning exit code 4.
 
