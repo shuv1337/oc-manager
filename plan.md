@@ -467,11 +467,26 @@
       - Tests cover: prefix matching, exit code 3 for invalid session/project, same-project handling
 
 ### Sessions copy
-- [ ] Add `sessions copy` options (`--session`, `--to`).
-- [ ] Validate target project exists before mutation.
-- [ ] Implement copy using `copySessions`.
-- [ ] Return exit code 3 when session id or target project is invalid.
-- [ ] Add tests for copy success and invalid target.
+- [x] Add `sessions copy` options (`--session`, `--to`).
+      - Options already defined in `src/cli/commands/sessions.ts` (lines 183-184)
+      - `--session` (required): Session ID to copy
+      - `--to` (required): Target project ID
+- [x] Validate target project exists before mutation.
+      - Uses `resolveProjectId()` with prefix matching to validate target project
+      - Throws `NotFoundError` (exit code 3) if project not found
+- [x] Implement copy using `copySession`.
+      - Uses `copySession()` from opencode-data layer (single session version)
+      - Creates new session file with new session ID in target project
+      - Original session remains unchanged in source project
+      - Allows copy to same project (creates duplicate with new ID)
+- [x] Return exit code 3 when session id or target project is invalid.
+      - Session validation via `resolveSessionId()` with prefix matching
+      - Project validation via `resolveProjectId()` with prefix matching
+      - Both wrapped with `withErrorHandling()` for consistent error output
+- [x] Add tests for copy success and invalid target.
+      - Added 9 tests in `tests/cli/commands/sessions.test.ts` under `describe("sessions copy")`
+      - Tests cover: success, original preserved, new file creation, projectID update
+      - Tests cover: prefix matching, exit code 3 for invalid session/project, same-project copy
 
 ### Exit codes
 - [ ] Add tests for usage errors returning exit code 2.

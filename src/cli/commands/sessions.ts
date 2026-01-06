@@ -13,6 +13,7 @@ import {
   deleteSessionMetadata,
   updateSessionTitle,
   moveSession,
+  copySession,
   type SessionRecord,
 } from "../../lib/opencode-data"
 import {
@@ -182,14 +183,17 @@ export function registerSessionsCommands(parent: Command): void {
     .description("Copy a session to another project")
     .requiredOption("--session <sessionId>", "Session ID to copy")
     .requiredOption("--to <projectId>", "Target project ID")
-    .action(function (this: Command) {
+    .action(async function (this: Command) {
       const globalOpts = parseGlobalOptions(collectOptions(this))
       const cmdOpts = this.opts()
       const copyOpts: SessionsCopyOptions = {
         session: String(cmdOpts.session),
         to: String(cmdOpts.to),
       }
-      handleSessionsCopy(globalOpts, copyOpts)
+      await withErrorHandling(handleSessionsCopy, getOutputOptions(globalOpts).format)(
+        globalOpts,
+        copyOpts
+      )
     })
 }
 
@@ -445,12 +449,47 @@ async function handleSessionsMove(
 
 /**
  * Handle the sessions copy command.
+ *
+ * This command copies a session to a different project.
+ * A new session file is created in the target project with a new session ID.
+ *
+ * Exit codes:
+ * - 0: Success
+ * - 3: Session or target project not found
+ * - 4: File operation failure
  */
-function handleSessionsCopy(
+async function handleSessionsCopy(
   globalOpts: GlobalOptions,
   copyOpts: SessionsCopyOptions
-): void {
-  console.log("sessions copy: not yet implemented")
-  console.log("Global options:", globalOpts)
-  console.log("Copy options:", copyOpts)
+): Promise<void> {
+  const outputOpts = getOutputOptions(globalOpts)
+
+  // Resolve session ID to a session record
+  const { session } = await resolveSessionId(copyOpts.session, {
+    root: globalOpts.root,
+    allowPrefix: true,
+  })
+
+  // Validate target project exists
+  // Use prefix matching for convenience, but require exactly one match
+  const { project: targetProject } = await resolveProjectId(copyOpts.to, {
+    root: globalOpts.root,
+    allowPrefix: true,
+  })
+
+  // Copy the session
+  const newRecord = await copySession(session, targetProject.projectId, globalOpts.root)
+
+  // Output success
+  printSuccessOutput(
+    `Copied session ${session.sessionId} to project ${targetProject.projectId}`,
+    {
+      originalSessionId: session.sessionId,
+      newSessionId: newRecord.sessionId,
+      fromProject: session.projectId,
+      toProject: targetProject.projectId,
+      newPath: newRecord.filePath,
+    },
+    outputOpts.format
+  )
 }

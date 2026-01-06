@@ -722,3 +722,119 @@ describe("sessions move", () => {
     expect(session.projectId).toBe("proj_missing");
   });
 });
+
+describe("sessions copy", () => {
+  let tempDir: string;
+  let tempRoot: string;
+
+  beforeEach(async () => {
+    // Create temporary directories for each test
+    tempDir = await fs.mkdtemp(join(tmpdir(), "opencode-test-"));
+    tempRoot = join(tempDir, "store");
+
+    // Copy fixture store to temp directory
+    await fs.cp(FIXTURE_STORE_ROOT, tempRoot, { recursive: true });
+
+    // Create a second project directory for copy target
+    const targetProjectDir = join(tempRoot, "storage", "session", "proj_missing");
+    await fs.mkdir(targetProjectDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    // Clean up temp directory
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("copies a session to another project successfully", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions copy --session session_add_tests --to proj_missing --root ${tempRoot} --format json`.quiet();
+    
+    expect(result.exitCode).toBe(0);
+    
+    const parsed = JSON.parse(result.stdout.toString());
+    expect(parsed).toHaveProperty("ok", true);
+    expect(parsed.data).toHaveProperty("originalSessionId", "session_add_tests");
+    expect(parsed.data).toHaveProperty("newSessionId");
+    expect(parsed.data.newSessionId).not.toBe("session_add_tests"); // New ID is generated
+    expect(parsed.data).toHaveProperty("fromProject", "proj_present");
+    expect(parsed.data).toHaveProperty("toProject", "proj_missing");
+  });
+
+  it("keeps original session in source project after copy", async () => {
+    await $`bun src/bin/opencode-manager.ts sessions copy --session session_add_tests --to proj_missing --root ${tempRoot} --format json`.quiet();
+
+    // Verify session is still in source project
+    const originalFile = join(tempRoot, "storage", "session", "proj_present", "session_add_tests.json");
+    const existsInSource = await fs.access(originalFile).then(() => true).catch(() => false);
+    expect(existsInSource).toBe(true);
+  });
+
+  it("creates new session in target project after copy", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions copy --session session_add_tests --to proj_missing --root ${tempRoot} --format json`.quiet();
+    const parsed = JSON.parse(result.stdout.toString());
+    const newSessionId = parsed.data.newSessionId;
+
+    // Verify new session exists in target project
+    const targetFile = join(tempRoot, "storage", "session", "proj_missing", `${newSessionId}.json`);
+    const existsInTarget = await fs.access(targetFile).then(() => true).catch(() => false);
+    expect(existsInTarget).toBe(true);
+  });
+
+  it("sets projectID in copied session file", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions copy --session session_add_tests --to proj_missing --root ${tempRoot} --format json`.quiet();
+    const parsed = JSON.parse(result.stdout.toString());
+    const newSessionId = parsed.data.newSessionId;
+
+    // Read the copied session file and verify projectID
+    const targetFile = join(tempRoot, "storage", "session", "proj_missing", `${newSessionId}.json`);
+    const content = await fs.readFile(targetFile, "utf8");
+    const payload = JSON.parse(content);
+    expect(payload.projectID).toBe("proj_missing");
+  });
+
+  it("supports prefix matching for session ID", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions copy --session session_add --to proj_missing --root ${tempRoot} --format json`.quiet();
+    
+    expect(result.exitCode).toBe(0);
+    
+    const parsed = JSON.parse(result.stdout.toString());
+    expect(parsed.data.originalSessionId).toBe("session_add_tests");
+  });
+
+  it("returns exit code 3 for non-existent session", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions copy --session nonexistent --to proj_missing --root ${tempRoot} --format json`.quiet().nothrow();
+    
+    expect(result.exitCode).toBe(3);
+  });
+
+  it("returns exit code 3 for non-existent target project", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions copy --session session_add_tests --to nonexistent_project --root ${tempRoot} --format json`.quiet().nothrow();
+    
+    expect(result.exitCode).toBe(3);
+  });
+
+  it("allows copy to same project (creates duplicate with new ID)", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions copy --session session_add_tests --to proj_present --root ${tempRoot} --format json`.quiet();
+    
+    expect(result.exitCode).toBe(0);
+    
+    const parsed = JSON.parse(result.stdout.toString());
+    expect(parsed).toHaveProperty("ok", true);
+    expect(parsed.data.originalSessionId).toBe("session_add_tests");
+    expect(parsed.data.newSessionId).not.toBe("session_add_tests");
+    expect(parsed.data.toProject).toBe("proj_present");
+  });
+
+  it("copied session is accessible in list", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions copy --session session_add_tests --to proj_missing --root ${tempRoot} --format json`.quiet();
+    const parsed = JSON.parse(result.stdout.toString());
+    const newSessionId = parsed.data.newSessionId;
+
+    // Verify new session appears in list with target project
+    const listResult = await $`bun src/bin/opencode-manager.ts sessions list --root ${tempRoot} --format json --project proj_missing`.quiet();
+    const listParsed = JSON.parse(listResult.stdout.toString());
+    
+    const session = listParsed.data.find((s: { sessionId: string }) => s.sessionId === newSessionId);
+    expect(session).toBeDefined();
+    expect(session.projectId).toBe("proj_missing");
+  });
+});
