@@ -502,7 +502,13 @@
       - Tests verify exit code 3 across json/ndjson/table formats
       - Tests verify error messages mention the missing resource type (project/session)
       - Tests verify --dry-run also returns exit code 3 for non-existent resources
-- [ ] Add tests for file operation failures returning exit code 4.
+- [x] Add tests for file operation failures returning exit code 4.
+      - Added 16 tests in `tests/cli/exit-codes.test.ts` under `describe("Exit Code 4: File Operation Failures")`
+      - Tests cover: backup to non-writable directory, delete of file in read-only directory
+      - Tests verify exit code 4 across json/ndjson/table formats
+      - Tests verify error messages mention backup/delete failure
+      - Tests verify files are not deleted when backup fails (safety check)
+      - Uses temp directories with read-only permissions (555) to simulate failures
 
 ## Phase 4 - Chat Commands
 - [ ] Add `chat list` options (`--session`, `--include-parts`, `--format`).

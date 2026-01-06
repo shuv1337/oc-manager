@@ -440,3 +440,249 @@ describe("Exit Code 3: Missing Resources", () => {
     })
   })
 })
+
+// ========================
+// Exit Code 4: File Operation Failures
+// ========================
+
+describe("Exit Code 4: File Operation Failures", () => {
+  let tempRoot: string
+
+  // Create a temp copy of fixture store to test file operation failures
+  beforeEach(async () => {
+    tempRoot = join(tmpdir(), `oc-test-exit4-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    await fs.mkdir(tempRoot, { recursive: true })
+    
+    // Copy fixture structure to temp
+    await fs.mkdir(join(tempRoot, "storage", "project"), { recursive: true })
+    await fs.mkdir(join(tempRoot, "storage", "session", "proj_deletable"), { recursive: true })
+    
+    // Create a deletable project
+    await fs.writeFile(
+      join(tempRoot, "storage", "project", "proj_deletable.json"),
+      JSON.stringify({
+        id: "proj_deletable",
+        worktree: "/tmp/deletable-project",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-01T00:00:00.000Z",
+      })
+    )
+    
+    // Create a deletable session
+    await fs.writeFile(
+      join(tempRoot, "storage", "session", "proj_deletable", "session_deletable.json"),
+      JSON.stringify({
+        id: "session_deletable",
+        projectID: "proj_deletable",
+        title: "Deletable Session",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        updatedAt: "2024-01-01T00:00:00.000Z",
+      })
+    )
+  })
+
+  afterEach(async () => {
+    // Clean up temp directory
+    await fs.rm(tempRoot, { recursive: true, force: true })
+  })
+
+  describe("backup to non-writable directory", () => {
+    let readOnlyBackupDir: string
+
+    beforeEach(async () => {
+      // Create a read-only backup directory
+      readOnlyBackupDir = join(tempRoot, "readonly-backup")
+      await fs.mkdir(readOnlyBackupDir)
+      await fs.chmod(readOnlyBackupDir, 0o444) // read-only
+    })
+
+    afterEach(async () => {
+      // Restore permissions for cleanup
+      await fs.chmod(readOnlyBackupDir, 0o755).catch(() => {})
+    })
+
+    it("projects delete with --backup-dir to read-only dir returns exit code 4", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id proj_deletable --yes --backup-dir ${readOnlyBackupDir} --root ${tempRoot}`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+    })
+
+    it("projects delete outputs error mentioning backup failure in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id proj_deletable --yes --backup-dir ${readOnlyBackupDir} --root ${tempRoot} --format json`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/backup|failed|permission|denied|create/)
+    })
+
+    it("sessions delete with --backup-dir to read-only dir returns exit code 4", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_deletable --yes --backup-dir ${readOnlyBackupDir} --root ${tempRoot}`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+    })
+
+    it("sessions delete outputs error mentioning backup failure in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_deletable --yes --backup-dir ${readOnlyBackupDir} --root ${tempRoot} --format json`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/backup|failed|permission|denied|create/)
+    })
+  })
+
+  describe("delete of file with removed permissions", () => {
+    beforeEach(async () => {
+      // Remove write permissions from the project directory
+      // Use 555 (r-xr-xr-x) to allow listing/reading but not writing/deleting
+      await fs.chmod(join(tempRoot, "storage", "project"), 0o555)
+    })
+
+    afterEach(async () => {
+      // Restore permissions for cleanup
+      await fs.chmod(join(tempRoot, "storage", "project"), 0o755).catch(() => {})
+    })
+
+    it("projects delete of file in read-only directory returns exit code 4", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id proj_deletable --yes --root ${tempRoot}`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+    })
+
+    it("projects delete outputs error mentioning delete failure in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id proj_deletable --yes --root ${tempRoot} --format json`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/fail|delete|permission/)
+    })
+  })
+
+  describe("delete of session file with removed permissions", () => {
+    beforeEach(async () => {
+      // Remove write permissions from the session directory
+      // Use 555 (r-xr-xr-x) to allow listing/reading but not writing/deleting
+      await fs.chmod(join(tempRoot, "storage", "session", "proj_deletable"), 0o555)
+    })
+
+    afterEach(async () => {
+      // Restore permissions for cleanup
+      await fs.chmod(join(tempRoot, "storage", "session", "proj_deletable"), 0o755).catch(() => {})
+    })
+
+    it("sessions delete of file in read-only directory returns exit code 4", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_deletable --yes --root ${tempRoot}`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+    })
+
+    it("sessions delete outputs error mentioning delete failure in JSON", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_deletable --yes --root ${tempRoot} --format json`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+      const output = result.stderr.toString()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+      expect(parsed.error.toLowerCase()).toMatch(/fail|delete|permission/)
+    })
+  })
+
+  describe("table format output for file operation failures", () => {
+    let readOnlyBackupDir: string
+
+    beforeEach(async () => {
+      readOnlyBackupDir = join(tempRoot, "readonly-backup")
+      await fs.mkdir(readOnlyBackupDir)
+      await fs.chmod(readOnlyBackupDir, 0o444)
+    })
+
+    afterEach(async () => {
+      await fs.chmod(readOnlyBackupDir, 0o755).catch(() => {})
+    })
+
+    it("projects delete outputs readable error in table format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id proj_deletable --yes --backup-dir ${readOnlyBackupDir} --root ${tempRoot} --format table`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+      const output = result.stderr.toString()
+      expect(output).toContain("Error")
+    })
+
+    it("sessions delete outputs readable error in table format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_deletable --yes --backup-dir ${readOnlyBackupDir} --root ${tempRoot} --format table`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+      const output = result.stderr.toString()
+      expect(output).toContain("Error")
+    })
+  })
+
+  describe("ndjson format output for file operation failures", () => {
+    let readOnlyBackupDir: string
+
+    beforeEach(async () => {
+      readOnlyBackupDir = join(tempRoot, "readonly-backup")
+      await fs.mkdir(readOnlyBackupDir)
+      await fs.chmod(readOnlyBackupDir, 0o444)
+    })
+
+    afterEach(async () => {
+      await fs.chmod(readOnlyBackupDir, 0o755).catch(() => {})
+    })
+
+    it("projects delete outputs error in ndjson format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts projects delete --id proj_deletable --yes --backup-dir ${readOnlyBackupDir} --root ${tempRoot} --format ndjson`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+      const output = result.stderr.toString().trim()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+    })
+
+    it("sessions delete outputs error in ndjson format", async () => {
+      const result = await $`bun src/bin/opencode-manager.ts sessions delete --session session_deletable --yes --backup-dir ${readOnlyBackupDir} --root ${tempRoot} --format ndjson`.quiet().nothrow()
+      expect(result.exitCode).toBe(4)
+      const output = result.stderr.toString().trim()
+      const parsed = JSON.parse(output)
+      expect(parsed).toHaveProperty("ok", false)
+    })
+  })
+
+  describe("file not deleted on backup failure", () => {
+    let readOnlyBackupDir: string
+
+    beforeEach(async () => {
+      readOnlyBackupDir = join(tempRoot, "readonly-backup")
+      await fs.mkdir(readOnlyBackupDir)
+      await fs.chmod(readOnlyBackupDir, 0o444)
+    })
+
+    afterEach(async () => {
+      await fs.chmod(readOnlyBackupDir, 0o755).catch(() => {})
+    })
+
+    it("projects delete does not delete file when backup fails", async () => {
+      const filePath = join(tempRoot, "storage", "project", "proj_deletable.json")
+      
+      // Verify file exists before
+      const existsBefore = await fs.access(filePath).then(() => true).catch(() => false)
+      expect(existsBefore).toBe(true)
+      
+      // Attempt delete with failing backup
+      await $`bun src/bin/opencode-manager.ts projects delete --id proj_deletable --yes --backup-dir ${readOnlyBackupDir} --root ${tempRoot}`.quiet().nothrow()
+      
+      // Verify file still exists after
+      const existsAfter = await fs.access(filePath).then(() => true).catch(() => false)
+      expect(existsAfter).toBe(true)
+    })
+
+    it("sessions delete does not delete file when backup fails", async () => {
+      const filePath = join(tempRoot, "storage", "session", "proj_deletable", "session_deletable.json")
+      
+      // Verify file exists before
+      const existsBefore = await fs.access(filePath).then(() => true).catch(() => false)
+      expect(existsBefore).toBe(true)
+      
+      // Attempt delete with failing backup
+      await $`bun src/bin/opencode-manager.ts sessions delete --session session_deletable --yes --backup-dir ${readOnlyBackupDir} --root ${tempRoot}`.quiet().nothrow()
+      
+      // Verify file still exists after
+      const existsAfter = await fs.access(filePath).then(() => true).catch(() => false)
+      expect(existsAfter).toBe(true)
+    })
+  })
+})
