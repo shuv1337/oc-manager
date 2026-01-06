@@ -22,6 +22,7 @@
   "scripts": {
     "tui": "bun src/opencode-tui.tsx",
     "dev": "bun --watch src/opencode-tui.tsx",
+    "test": "bun test",
     "typecheck": "bunx tsc --noEmit",
     "prepublishOnly": "bun run typecheck"
   },
