@@ -142,6 +142,19 @@ opencode-manager
 └── tui           Launch the Terminal UI
 ```
 
+#### TUI Subcommand
+
+The `tui` subcommand explicitly launches the Terminal UI. This is equivalent to running `opencode-manager` with no subcommand:
+
+```bash
+# These are equivalent:
+opencode-manager
+opencode-manager tui
+opencode-manager tui --root ~/.local/share/opencode
+```
+
+Use the explicit `tui` subcommand when you want to be clear about intent in scripts or when combining with other options. Note that `tui --help` shows the TUI help screen (key bindings), not Commander CLI help.
+
 #### Output Format Examples
 
 The CLI supports three output formats via `--format`:

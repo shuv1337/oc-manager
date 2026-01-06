@@ -492,7 +492,8 @@ When documentation and code conflict, resolve using this priority:
 - [x] Document aggregate fields: `knownOnly`, `unknownSessions`
 
 ### 2.8 README.md TUI Command
-- [ ] Document `tui` subcommand to launch TUI explicitly
+- [x] Document `tui` subcommand to launch TUI explicitly
+  - **Done**: Added "TUI Subcommand" section after Commands Overview explaining explicit `tui` invocation, equivalence to default behavior, and note about `tui --help` showing TUI help
 
 ### 2.9 README.md Help Routing
 - [ ] Add section explaining dual help system
