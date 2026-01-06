@@ -284,9 +284,19 @@ When documentation and code conflict, resolve using this priority:
   - **DISCREPANCY-012**: PROJECT-SUMMARY.md:156 Sessions keys missing `A` (select all - implemented but undocumented everywhere), `V` (view chat), `F` (search chats), `Enter` (show details), `Esc` (clear selection)
 
 ### 1.17 tests/fixtures/README.md Audit
-- [ ] Read `tests/fixtures/README.md`
-- [ ] Compare schema details against `src/lib/opencode-data.ts`
-- [ ] Document any discrepancies in schema or layout
+- [x] Read `tests/fixtures/README.md`
+  - **Finding**: Comprehensive schema documentation covering directory layout, project/session/message/part schemas
+- [x] Compare schema details against `src/lib/opencode-data.ts`
+  - **Finding**: All primary storage paths documented correctly
+  - **Finding**: Project schema fields match: `id`, `worktree`, `vcs`, `time.created`
+  - **Finding**: Session schema fields match: `id`, `projectID`, `directory`, `title`, `version`, `time.created`, `time.updated`
+  - **Finding**: Message schema fields match: `id`, `sessionID`, `role`, `time.created`, `parentID`, `tokens.*`
+  - **Finding**: Part schemas match for text, tool, subtask types
+- [x] Document any discrepancies in schema or layout
+  - **DISCREPANCY-013**: Legacy fallback paths not documented in tests/fixtures/README.md:
+    - `storage/session/message/<sessionId>/<messageId>.json` (line 617 in opencode-data.ts)
+    - `storage/session/part/<messageId>/<partId>.json` (line 794 in opencode-data.ts)
+  - **Note**: This is minor - fixtures document current layout; legacy is for backwards compatibility only
 
 ### 1.18 Legacy Wrapper Audit
 - [ ] Read `manage_opencode_projects.py` usage section
