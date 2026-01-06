@@ -1,6 +1,5 @@
 import type { KeyEvent, SelectOption } from "@opentui/core"
-import { createRoot, useKeyboard, useRenderer } from "@opentui/react"
-import { createCliRenderer } from "@opentui/core"
+import { useKeyboard, useRenderer } from "@opentui/react"
 import React, {
   forwardRef,
   useCallback,
@@ -10,10 +9,8 @@ import React, {
   useRef,
   useState,
 } from "react"
-import { resolve } from "node:path"
 import { exec } from "node:child_process"
 import {
-  DEFAULT_ROOT,
   ProjectRecord,
   SessionRecord,
   deleteProjectMetadata,
@@ -2107,83 +2104,3 @@ export const App = ({ root }: { root: string }) => {
     </box>
   )
 }
-
-function parseArgs(): { root: string } {
-  const args = process.argv.slice(2)
-  let root = DEFAULT_ROOT
-
-  for (let idx = 0; idx < args.length; idx += 1) {
-    const token = args[idx]
-    if (token === "--root" && args[idx + 1]) {
-      root = resolve(args[idx + 1])
-      idx += 1
-      continue
-    }
-    if (token === "--help" || token === "-h") {
-      printUsage()
-      process.exit(0)
-    }
-  }
-
-  return { root }
-}
-
-function printUsage(): void {
-  console.log(`OpenCode Metadata TUI
-Usage: bun run tui [-- --root /path/to/storage]
-
-Key bindings:
-  Tab / 1 / 2     Switch between projects and sessions
-  /               Start search (active tab)
-  X               Clear search
-  ? / H           Toggle help
-  R               Reload (and refresh token cache)
-  Q               Quit the application
-
-Projects view:
-  Space           Toggle selection
-  A               Select all (visible)
-  M               Toggle missing-only filter
-  D               Delete selected (with confirmation)
-  Enter           Jump to Sessions for project
-  Esc             Clear selection
-
-Sessions view:
-  Space           Toggle selection
-  S               Toggle sort (updated/created)
-  V               View chat history for selected session
-  F               Search across all chat content in sessions
-  Shift+R         Rename session
-  M               Move selected sessions to project
-  P               Copy selected sessions to project
-  Y               Copy session ID to clipboard
-  C               Clear project filter
-  D               Delete selected (with confirmation)
-  Enter           Show details
-  Esc             Clear selection
-
-Chat search (when open):
-  Type            Enter search query
-  Enter           Search / open selected result
-  Up/Down         Navigate results
-  Esc             Close search
-
-Chat viewer (when open):
-  Esc             Close viewer
-  Up/Down         Navigate messages
-  PgUp/PgDn       Jump 10 messages
-  Home/End        Jump to first/last message
-  Y               Copy message content to clipboard
-`)
-}
-
-async function bootstrap() {
-  const { root } = parseArgs()
-  const renderer = await createCliRenderer()
-  createRoot(renderer).render(<App root={root} />)
-}
-
-bootstrap().catch((error) => {
-  console.error(error)
-  process.exit(1)
-})

@@ -20,8 +20,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "tui": "bun src/tui/app.tsx",
-    "dev": "bun --watch src/tui/app.tsx",
+    "tui": "bun src/tui/index.tsx",
+    "dev": "bun --watch src/tui/index.tsx",
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit",
     "prepublishOnly": "bun run typecheck"

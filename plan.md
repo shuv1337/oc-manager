@@ -56,7 +56,13 @@
 - [x] Update all imports to use `src/tui/app.tsx` path.
       - Code imports already updated in prior task
       - Updated documentation: README.md, PROJECT-SUMMARY.md, manage_opencode_projects.py
-- [ ] Extract `parseArgs()` into `src/tui/args.ts` (or inline in `launchTUI`).
+- [x] Extract `parseArgs()` into `src/tui/args.ts` (or inline in `launchTUI`).
+      - Created `src/tui/args.ts` with `parseArgs()`, `printUsage()`, and `TUIOptions` type
+      - Updated `src/tui/index.tsx` to import from `args.ts` and re-export for external consumers
+      - Removed duplicate parseArgs/printUsage/bootstrap from `src/tui/app.tsx`
+      - Cleaned up unused imports in `app.tsx` (createRoot, createCliRenderer, resolve, DEFAULT_ROOT)
+      - Updated `src/bin/opencode-manager.ts` to import from `index` instead of `app`
+      - Updated package.json scripts to use `src/tui/index.tsx` as entry point
 - [ ] Update `launchTUI` to call `parseArgs()` and pass options to TUI.
 - [ ] Ensure `bun run tui` uses the new TUI entrypoint.
 - [ ] Update `src/bin/opencode-manager.ts` to route CLI vs TUI via dynamic imports.
