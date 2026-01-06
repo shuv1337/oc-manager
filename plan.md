@@ -53,7 +53,9 @@
       - Moved file and updated imports in `src/tui/index.tsx`, `src/bin/opencode-manager.ts`
       - Updated import path in app.tsx from `./lib/opencode-data` to `../lib/opencode-data`
       - Updated `package.json` scripts to point to new location
-- [ ] Update all imports to use `src/tui/app.tsx` path.
+- [x] Update all imports to use `src/tui/app.tsx` path.
+      - Code imports already updated in prior task
+      - Updated documentation: README.md, PROJECT-SUMMARY.md, manage_opencode_projects.py
 - [ ] Extract `parseArgs()` into `src/tui/args.ts` (or inline in `launchTUI`).
 - [ ] Update `launchTUI` to call `parseArgs()` and pass options to TUI.
 - [ ] Ensure `bun run tui` uses the new TUI entrypoint.

@@ -103,7 +103,9 @@ Keyboard reference:
 ```
 src/
   bin/opencode-manager.ts   # Bun-native CLI shim exposed as the bin entry
-  opencode-tui.tsx          # Main TUI implementation (panels, search, help)
+  tui/
+    app.tsx                 # Main TUI implementation (panels, search, help)
+    index.tsx               # TUI entrypoint with launchTUI(), parseArgs(), bootstrap()
 manage_opencode_projects.py # Legacy Python launcher for backwards compatibility
 opencode-gen.sh             # Spec snapshot helper script
 PROJECT-SUMMARY.md          # Extended design notes & roadmap

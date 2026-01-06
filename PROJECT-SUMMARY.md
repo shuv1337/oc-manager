@@ -9,7 +9,7 @@ Overview
 
 Architecture
 ------------
-- Entry: `opencode/src/opencode-tui.tsx` — main TUI app and panels.
+- Entry: `src/tui/app.tsx` — main TUI app and panels; `src/tui/index.tsx` exports `launchTUI()`.
 - Data layer: `opencode/src/lib/opencode-data.ts` — reads/writes metadata JSON, computes derived fields, formatting helpers.
 - Scripts: `opencode/package.json` → `bun run tui` runs the app.
 - CLI wrapper: `opencode/manage_opencode_projects.py` preserves the legacy entry point, resolves Bun (`--bun` overrides PATH), sets `--root` (defaults to `~/.local/share/opencode`), and forwards any extra args after `--` directly to the TUI.
@@ -78,7 +78,7 @@ How To Run
   - Global: `Tab`/`1`/`2` switch tabs, `/` search, `X` clear search, `R` reload, `Q` quit, `?` help
   - Projects: `Space` select, `A` select all, `M` toggle missing, `D` delete, `Enter` view sessions
   - Sessions: `Space` select, `S` sort, `D` delete, `Y` copy ID, `Shift+R` rename, `M` move, `P` copy, `C` clear filter
-- Optional tmux usage (when permitted): `tmux new -s opencode-tui 'bun run tui'`
+- Optional tmux usage (when permitted): `tmux new -s opencode-manager 'bun run tui'`
 - CLI help: `bun run tui -- --help` (or `bunx opencode-manager -- --help`, or `manage_opencode_projects.py -- --help`) prints the built-in usage block with key bindings.
 
 Packaging & Publish Checklist

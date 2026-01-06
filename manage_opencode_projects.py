@@ -2,7 +2,7 @@
 """Launch the OpenCode metadata TUI built with OpenTUI.
 
 This wrapper keeps the previous entry point name but simply shells out to the
-new Bun-powered React TUI located under ``src/opencode-tui.tsx``. Use
+new Bun-powered React TUI located under ``src/tui/app.tsx``. Use
 ``manage_opencode_projects.py -- --help`` to see the TUI's runtime help text.
 """
 
