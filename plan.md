@@ -45,7 +45,10 @@
 - [x] Run `bun test` and fix any fixture or path issues.
 
 ## Phase 1 - TUI Refactor and CLI Skeleton
-- [ ] Create `src/tui/index.ts` exporting `launchTUI(args)`.
+- [x] Create `src/tui/index.ts` exporting `launchTUI(args)`.
+      - Created `src/tui/index.tsx` with `launchTUI()`, `parseArgs()`, `printUsage()`, and `bootstrap()` exports
+      - Added `export` to `App` component in `src/opencode-tui.tsx` to allow import from tui module
+      - Uses `.tsx` extension for JSX support
 - [ ] Move `src/opencode-tui.tsx` to `src/tui/app.tsx`.
 - [ ] Update all imports to use `src/tui/app.tsx` path.
 - [ ] Extract `parseArgs()` into `src/tui/args.ts` (or inline in `launchTUI`).

@@ -1471,7 +1471,7 @@ const ChatViewer = ({
   )
 }
 
-const App = ({ root }: { root: string }) => {
+export const App = ({ root }: { root: string }) => {
   const renderer = useRenderer()
   const projectsRef = useRef<PanelHandle>(null)
   const sessionsRef = useRef<PanelHandle>(null)
