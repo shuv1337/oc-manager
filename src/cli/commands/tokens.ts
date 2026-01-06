@@ -8,6 +8,7 @@
 import { Command, type OptionValues } from "commander"
 import { parseGlobalOptions, type GlobalOptions } from "../index"
 import {
+  computeGlobalTokenSummary,
   computeProjectTokenSummary,
   computeSessionTokenSummary,
   loadProjectRecords,
@@ -93,9 +94,13 @@ export function registerTokensCommands(parent: Command): void {
   tokens
     .command("global")
     .description("Show global token usage")
-    .action(function (this: Command) {
+    .action(async function (this: Command) {
       const globalOpts = parseGlobalOptions(collectOptions(this))
-      handleTokensGlobal(globalOpts)
+      try {
+        await handleTokensGlobal(globalOpts)
+      } catch (error) {
+        handleError(error, globalOpts.format)
+      }
     })
 }
 
@@ -181,7 +186,14 @@ async function handleTokensProject(
 /**
  * Handle the tokens global command.
  */
-function handleTokensGlobal(globalOpts: GlobalOptions): void {
-  console.log("tokens global: not yet implemented")
-  console.log("Global options:", globalOpts)
+async function handleTokensGlobal(globalOpts: GlobalOptions): Promise<void> {
+  // Load all sessions to compute global token summary
+  const sessions = await loadSessionRecords({ root: globalOpts.root })
+
+  // Compute token summary across all sessions
+  const summary = await computeGlobalTokenSummary(sessions, globalOpts.root)
+
+  // Output the result
+  const outputOpts = getOutputOptions(globalOpts)
+  printAggregateTokensOutput(summary, outputOpts.format, "Global")
 }
