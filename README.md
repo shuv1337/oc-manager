@@ -95,8 +95,8 @@ bun run tui -- --root ~/.local/share/opencode
 
 Keyboard reference:
 - **Global**: `Tab`/`1`/`2` switch tabs, `/` search (fuzzy), `X` clear search, `R` reload, `Q` quit, `?/H` help.
-- **Projects**: `Space` toggle selection, `A` select all, `M` missing-only filter, `D` delete, `Enter` jump to Sessions.
-- **Sessions**: `Space` select, `S` toggle sort, `V` view chat, `F` search chats, `D` delete, `Y` copy ID, `Shift+R` rename, `M` move, `P` copy, `C` clear filter.
+- **Projects**: `Space` toggle selection, `A` select all, `M` missing-only filter, `D` delete, `Enter` jump to Sessions, `Esc` clear selection.
+- **Sessions**: `Space` select, `A` select all, `S` toggle sort, `V` view chat, `F` search chats, `D` delete, `Y` copy ID, `Shift+R` rename, `M` move, `P` copy, `C` clear filter, `Enter` details, `Esc` clear selection.
 - **Chat Search**: Type query + `Enter` to search, `Up/Down` navigate, `Enter` opens result, `Esc` close.
 - **Chat Viewer**: `Esc` close, `Up/Down` navigate, `PgUp/PgDn` jump 10, `Home/End` first/last, `Y` copy message.
 

@@ -332,8 +332,8 @@ When documentation and code conflict, resolve using this priority:
 | ID | Location | Issue | Fix |
 |----|----------|-------|-----|
 | ~~DOC-001~~ | ~~README.md TUI section~~ | ~~Missing `H` as help toggle alternative (only shows `?`)~~ | ~~Add `?/H`~~ ✅ DONE |
-| DOC-002 | README.md TUI section | Projects view missing `Esc` (clear selection) | Add key binding |
-| DOC-003 | README.md TUI section | Sessions view missing `A` (select all), `Enter` (details), `Esc` (clear) | Add key bindings |
+| ~~DOC-002~~ | ~~README.md TUI section~~ | ~~Projects view missing `Esc` (clear selection)~~ | ~~Add key binding~~ ✅ DONE |
+| ~~DOC-003~~ | ~~README.md TUI section~~ | ~~Sessions view missing `A` (select all), `Enter` (details), `Esc` (clear)~~ | ~~Add key bindings~~ ✅ DONE |
 | DOC-004 | README.md | Missing ID prefix matching behavior docs | Add section |
 | DOC-005 | README.md | Missing note that `tokens` commands require exact IDs | Add to tokens section |
 | DOC-006 | README.md Output section | Missing `meta.limit` and `meta.truncated` fields | Add to JSON envelope docs |
@@ -353,11 +353,11 @@ When documentation and code conflict, resolve using this priority:
 | MINOR-001 | tests/fixtures/README.md | Legacy fallback paths not documented | Add legacy paths section (optional) |
 
 ### Summary Statistics
-- **Total Discrepancies**: 14
-- **Priority 1 (Requirements)**: 2
-- **Priority 2 (Missing Docs)**: 7
-- **Priority 3 (Help Text)**: 4
-- **Priority 4 (Minor)**: 1
+- **Total Discrepancies**: 14 (5 fixed)
+- **Priority 1 (Requirements)**: 2 (2 fixed)
+- **Priority 2 (Missing Docs)**: 7 (3 fixed)
+- **Priority 3 (Help Text)**: 4 (0 fixed)
+- **Priority 4 (Minor)**: 1 (0 fixed)
 
 ---
 
