@@ -16,7 +16,14 @@
       - **Chat APIs**: `loadSessionChatIndex()`, `loadMessageParts()`, `hydrateChatMessageParts()`, `searchSessionsChat()`
       - **Utilities**: `formatDisplayPath()`, `formatDate()`, `ensureDirectory()`, `loadSessionMessagePaths()`, `loadMessagePartPaths()`
       - **Constants**: `DEFAULT_ROOT`
-- [ ] Locate TUI fuzzy search usage and identify exact extraction boundaries.
+- [x] Locate TUI fuzzy search usage and identify exact extraction boundaries.
+      - **Import**: Line 47 - `import { Searcher } from "fast-fuzzy"`
+      - **Usage in SessionsPanel** (lines 578-638):
+        - `searchCandidates` memo (lines 579-591): builds array of `{session, searchText, updatedMs, createdMs}`
+        - `searcher` memo (lines 594-598): instantiates `Searcher` with `keySelector: (c) => c.searchText`
+        - `visibleRecords` memo (lines 600-638): calls `searcher.search(q, { returnMatchData: true })`, sorts by score/time/id
+      - **Note**: ProjectsPanel (lines 276-285) uses simple tokenized substring matching, NOT fast-fuzzy
+      - **Extraction target**: lines 578-638 contain the core fuzzy search logic for sessions
 - [ ] Locate TUI clipboard usage and identify exact extraction boundaries.
 - [ ] Create `tests/` directory at repo root.
 - [ ] Create `tests/fixtures/` directory for metadata stores.
