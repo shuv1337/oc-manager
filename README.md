@@ -182,10 +182,19 @@ $ bunx opencode-manager sessions list --project prj_abc123 --format json --limit
     }
   ],
   "meta": {
-    "count": 2
+    "count": 2,
+    "limit": 2,
+    "truncated": true
   }
 }
 ```
+
+JSON output auto-detects your terminal: pretty-printed with indentation when output goes to a TTY, compact single-line when piped to another command.
+
+The `meta` object contains:
+- `count` — Number of items in the `data` array
+- `limit` — The limit that was applied (if `--limit` was specified)
+- `truncated` — `true` if results were truncated due to the limit
 
 **NDJSON** — Newline-delimited JSON for streaming/piping:
 

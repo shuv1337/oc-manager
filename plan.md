@@ -336,8 +336,8 @@ When documentation and code conflict, resolve using this priority:
 | ~~DOC-003~~ | ~~README.md TUI section~~ | ~~Sessions view missing `A` (select all), `Enter` (details), `Esc` (clear)~~ | ~~Add key bindings~~ ✅ DONE |
 | ~~DOC-004~~ | ~~README.md~~ | ~~Missing ID prefix matching behavior docs~~ | ~~Add section~~ ✅ DONE |
 | ~~DOC-005~~ | ~~README.md~~ | ~~Missing note that `tokens` commands require exact IDs~~ | ~~Add to tokens section~~ ✅ DONE |
-| DOC-006 | README.md Output section | Missing `meta.limit` and `meta.truncated` fields | Add to JSON envelope docs |
-| DOC-007 | README.md Output section | Missing TTY auto-pretty-print behavior | Add note |
+| ~~DOC-006~~ | ~~README.md Output section~~ | ~~Missing `meta.limit` and `meta.truncated` fields~~ | ~~Add to JSON envelope docs~~ ✅ DONE |
+| ~~DOC-007~~ | ~~README.md Output section~~ | ~~Missing TTY auto-pretty-print behavior~~ | ~~Add note~~ ✅ DONE |
 
 ### Priority 3: Help Text Gaps (User Impact: MEDIUM)
 | ID | Location | Issue | Fix |
@@ -353,9 +353,9 @@ When documentation and code conflict, resolve using this priority:
 | MINOR-001 | tests/fixtures/README.md | Legacy fallback paths not documented | Add legacy paths section (optional) |
 
 ### Summary Statistics
-- **Total Discrepancies**: 14 (10 fixed)
+- **Total Discrepancies**: 14 (12 fixed)
 - **Priority 1 (Requirements)**: 2 (2 fixed)
-- **Priority 2 (Missing Docs)**: 7 (5 fixed)
+- **Priority 2 (Missing Docs)**: 7 (7 fixed)
 - **Priority 3 (Help Text)**: 4 (3 fixed)
 - **Priority 4 (Minor)**: 1 (0 fixed)
 
@@ -740,10 +740,10 @@ When documentation and code conflict, resolve using this priority:
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
 | Phase 1 | 59 | 59 | 100% |
-| Phase 2 | 78 | 11 | 14% |
+| Phase 2 | 78 | 13 | 17% |
 | Phase 2a | 28 | 0 | 0% |
 | Phase 2b | 7 | 1 | 14% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **232** | **71** | **30.6%** |
+| **Total** | **232** | **73** | **31.5%** |
