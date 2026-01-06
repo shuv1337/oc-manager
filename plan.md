@@ -32,7 +32,7 @@
         - Line 915: Copy session ID to clipboard (`y` key in SessionsPanel)
         - Line 1644: Copy message content to clipboard (`Y` key in ChatPanel)
       - **Extraction target**: lines 141-151 (self-contained function, no external deps beyond `exec`)
-- [ ] Create `tests/` directory at repo root.
+- [x] Create `tests/` directory at repo root.
 - [ ] Create `tests/fixtures/` directory for metadata stores.
 - [ ] Design a minimal fixture store layout matching the on-disk schema.
 - [ ] Add fixture project metadata for at least two projects (one missing).
