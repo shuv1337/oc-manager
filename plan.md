@@ -562,9 +562,20 @@
 - [x] Add test for chat show output includes combined full text.
       - Tests verify parts array is hydrated with multiple part types (text, tool, subtask)
       - Tests verify previewText is computed from parts content
-- [ ] Add `chat search` options (`--query`, `--project`, `--limit`, `--format`).
-- [ ] Implement chat search using `searchSessionsChat`.
-- [ ] Apply project filter and limit to chat search results.
+- [x] Add `chat search` options (`--query`, `--project`, `--limit`, `--format`).
+      - Updated `src/cli/commands/chat.ts` with full implementation
+      - Added `-q, --query` (required): Search query string
+      - Added `-p, --project`: Optional project ID filter
+      - Uses global `--limit` (default 200) and `--format` options
+      - Wrapped action with `withErrorHandling()` for consistent error output
+- [x] Implement chat search using `searchSessionsChat`.
+      - Uses `loadSessionRecords()` to get sessions (optionally filtered by project)
+      - Calls `searchSessionsChat()` from opencode-data layer
+      - Returns matching messages with context snippets around matches
+- [x] Apply project filter and limit to chat search results.
+      - Project filter passed to `loadSessionRecords()` via `projectId` option
+      - Limit passed to `searchSessionsChat()` via `maxResults` option
+      - Results indexed with 1-based index for display
 - [ ] Add tests for chat search matches and ordering.
 - [ ] Add `--clipboard` support for chat show output.
 

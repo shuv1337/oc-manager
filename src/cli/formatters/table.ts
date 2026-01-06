@@ -5,7 +5,7 @@
  * Supports column definitions, truncation, and alignment.
  */
 
-import type { AggregateTokenSummary, ChatMessage, ChatRole, ProjectRecord, ProjectState, SessionRecord, TokenBreakdown, TokenSummary } from "../../lib/opencode-data"
+import type { AggregateTokenSummary, ChatMessage, ChatRole, ChatSearchResult, ProjectRecord, ProjectState, SessionRecord, TokenBreakdown, TokenSummary } from "../../lib/opencode-data"
 
 // ========================
 // Column Definition Types
@@ -732,4 +732,106 @@ export function printAggregateTokenSummary(
   options?: TableFormatOptions & { label?: string }
 ): void {
   console.log(formatAggregateTokenSummary(summary, options))
+}
+
+// ========================
+// Chat Search Results Columns
+// ========================
+
+/**
+ * Indexed chat search result for display.
+ */
+export type IndexedChatSearchResult = ChatSearchResult & { index: number }
+
+/**
+ * Column definitions for chat search results output.
+ *
+ * Columns: #, Role, Session, Match, Created
+ */
+export const chatSearchColumns: ColumnDefinition<IndexedChatSearchResult>[] = [
+  {
+    header: "#",
+    width: 4,
+    align: "right",
+    accessor: (row) => row.index,
+  },
+  {
+    header: "Role",
+    width: 4,
+    align: "center",
+    accessor: (row) => row.role,
+    format: (role) => formatChatRole(role as ChatRole),
+  },
+  {
+    header: "Session",
+    width: 30,
+    align: "left",
+    accessor: (row) => row.sessionTitle,
+  },
+  {
+    header: "Match",
+    width: 50,
+    align: "left",
+    accessor: (row) => row.matchedText,
+  },
+  {
+    header: "Created",
+    width: 16,
+    align: "left",
+    accessor: (row) => row.createdAt,
+    format: (val) => formatDateForTable(val as Date | null | undefined),
+  },
+]
+
+/**
+ * Compact column definitions for chat search results (narrower terminals).
+ */
+export const chatSearchColumnsCompact: ColumnDefinition<IndexedChatSearchResult>[] = [
+  {
+    header: "#",
+    width: 4,
+    align: "right",
+    accessor: (row) => row.index,
+  },
+  {
+    header: "R",
+    width: 1,
+    align: "center",
+    accessor: (row) => row.role,
+    format: (role) => formatChatRole(role as ChatRole),
+  },
+  {
+    header: "Session",
+    width: 25,
+    align: "left",
+    accessor: (row) => row.sessionTitle,
+  },
+  {
+    header: "Match",
+    width: 60,
+    align: "left",
+    accessor: (row) => row.matchedText,
+  },
+]
+
+/**
+ * Format chat search results as a table.
+ * Results are expected to have an index property added.
+ */
+export function formatChatSearchTable(
+  results: IndexedChatSearchResult[],
+  options?: TableFormatOptions & { compact?: boolean }
+): string {
+  const columns = options?.compact ? chatSearchColumnsCompact : chatSearchColumns
+  return formatTable(results, columns, options)
+}
+
+/**
+ * Print chat search results table to stdout.
+ */
+export function printChatSearchTable(
+  results: IndexedChatSearchResult[],
+  options?: TableFormatOptions & { compact?: boolean }
+): void {
+  console.log(formatChatSearchTable(results, options))
 }

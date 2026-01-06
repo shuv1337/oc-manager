@@ -12,6 +12,7 @@ import type { GlobalOptions } from "./index"
 import type {
   AggregateTokenSummary,
   ChatMessage,
+  ChatSearchResult,
   ProjectRecord,
   SessionRecord,
   TokenSummary,
@@ -33,15 +34,18 @@ import {
 import { formatNdjson, printNdjson } from "./formatters/ndjson"
 import {
   formatAggregateTokenSummary,
+  formatChatSearchTable,
   formatChatTable,
   formatProjectsTable,
   formatSessionsTable,
   formatTokenSummary,
   printAggregateTokenSummary,
+  printChatSearchTable,
   printChatTable,
   printProjectsTable,
   printSessionsTable,
   printTokenSummary,
+  type IndexedChatSearchResult,
   type TableFormatOptions,
 } from "./formatters/table"
 
@@ -335,6 +339,46 @@ export function printChatMessageOutput(
 }
 
 // ========================
+// Chat Search Output
+// ========================
+
+/**
+ * Format chat search results for output.
+ */
+export function formatChatSearchOutput(
+  results: IndexedChatSearchResult[],
+  options: OutputOptions
+): string {
+  switch (options.format) {
+    case "json":
+      return formatJsonArraySuccess(results, options.meta, {
+        pretty: process.stdout.isTTY,
+      })
+    case "ndjson":
+      return formatNdjson(results)
+    case "table":
+      return formatChatSearchTable(results)
+    default:
+      const _exhaustive: never = options.format
+      throw new Error(`Unknown format: ${_exhaustive}`)
+  }
+}
+
+/**
+ * Print chat search results to stdout.
+ */
+export function printChatSearchOutput(
+  results: IndexedChatSearchResult[],
+  options: OutputOptions
+): void {
+  if (options.quiet && options.format === "table") {
+    console.log(`${results.length} match(es)`)
+    return
+  }
+  console.log(formatChatSearchOutput(results, options))
+}
+
+// ========================
 // Tokens Output
 // ========================
 
@@ -601,14 +645,17 @@ export { formatNdjson, printNdjson } from "./formatters/ndjson"
 
 export {
   formatAggregateTokenSummary,
+  formatChatSearchTable,
   formatChatTable,
   formatProjectsTable,
   formatSessionsTable,
   formatTokenSummary,
   printAggregateTokenSummary,
+  printChatSearchTable,
   printChatTable,
   printProjectsTable,
   printSessionsTable,
   printTokenSummary,
+  type IndexedChatSearchResult,
   type TableFormatOptions,
 } from "./formatters/table"

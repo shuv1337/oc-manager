@@ -9,7 +9,9 @@ import { Command, type OptionValues } from "commander"
 import { parseGlobalOptions, type GlobalOptions } from "../index"
 import {
   loadSessionChatIndex,
+  loadSessionRecords,
   hydrateChatMessageParts,
+  searchSessionsChat,
   type ChatMessage,
 } from "../../lib/opencode-data"
 import { copyToClipboard } from "../../lib/clipboard"
@@ -19,7 +21,9 @@ import {
   getOutputOptions,
   printChatOutput,
   printChatMessageOutput,
+  printChatSearchOutput,
   type IndexedChatMessage,
+  type IndexedChatSearchResult,
   type OutputFormat,
 } from "../output"
 
@@ -124,14 +128,17 @@ export function registerChatCommands(parent: Command): void {
     .description("Search chat content across sessions")
     .requiredOption("-q, --query <query>", "Search query")
     .option("-p, --project <projectId>", "Filter by project ID")
-    .action(function (this: Command) {
+    .action(async function (this: Command) {
       const globalOpts = parseGlobalOptions(collectOptions(this))
       const cmdOpts = this.opts()
       const searchOpts: ChatSearchOptions = {
         query: String(cmdOpts.query),
         project: cmdOpts.project as string | undefined,
       }
-      handleChatSearch(globalOpts, searchOpts)
+      await withErrorHandling(handleChatSearch, globalOpts.format)(
+        globalOpts,
+        searchOpts
+      )
     })
 }
 
@@ -272,12 +279,35 @@ async function handleChatShow(
 
 /**
  * Handle the chat search command.
+ *
+ * Searches chat content across all sessions (or filtered by project).
+ * Returns matching messages with context snippets.
  */
-function handleChatSearch(
+async function handleChatSearch(
   globalOpts: GlobalOptions,
   searchOpts: ChatSearchOptions
-): void {
-  console.log("chat search: not yet implemented")
-  console.log("Global options:", globalOpts)
-  console.log("Search options:", searchOpts)
+): Promise<void> {
+  // Load sessions to search
+  const sessions = await loadSessionRecords({
+    root: globalOpts.root,
+    projectId: searchOpts.project,
+  })
+
+  // Search across sessions using the limit from global options
+  const results = await searchSessionsChat(
+    sessions,
+    searchOpts.query,
+    globalOpts.root,
+    { maxResults: globalOpts.limit }
+  )
+
+  // Add 1-based index for display
+  const indexedResults: IndexedChatSearchResult[] = results.map((result, i) => ({
+    ...result,
+    index: i + 1,
+  }))
+
+  // Output using configured format
+  const outputOpts = getOutputOptions(globalOpts)
+  printChatSearchOutput(indexedResults, outputOpts)
 }
