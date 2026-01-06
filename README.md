@@ -75,6 +75,13 @@ bunx opencode-manager --help
 The repository ships with a focused `.gitignore`, keeping `node_modules/`, caches, and logs out of Git history.
 
 ## Usage
+
+The manager provides both a Terminal UI (TUI) and a scriptable CLI interface.
+
+### Terminal UI (TUI)
+
+The TUI is the default interface when no subcommand is provided:
+
 ```bash
 # Preferred: zero-install command
 bunx opencode-manager --root ~/.local/share/opencode
@@ -92,6 +99,58 @@ Keyboard reference:
 - **Sessions**: `Space` select, `S` toggle sort, `V` view chat, `F` search chats, `D` delete, `Y` copy ID, `Shift+R` rename, `M` move, `P` copy, `C` clear filter.
 - **Chat Search**: Type query + `Enter` to search, `Up/Down` navigate, `Enter` opens result, `Esc` close.
 - **Chat Viewer**: `Esc` close, `Up/Down` navigate, `PgUp/PgDn` jump 10, `Home/End` first/last, `Y` copy message.
+
+### Command Line Interface (CLI)
+
+The CLI provides scriptable access to all management operations. Use subcommands to list, search, and modify metadata.
+
+#### Global Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-r, --root <path>` | `~/.local/share/opencode` | Root path to OpenCode metadata store |
+| `-f, --format <fmt>` | `table` | Output format: `json`, `ndjson`, or `table` |
+| `-l, --limit <n>` | `200` | Maximum number of records to return |
+| `--sort <order>` | `updated` | Sort order: `updated` or `created` |
+| `-y, --yes` | `false` | Skip confirmation prompts for destructive operations |
+| `-n, --dry-run` | `false` | Preview changes without executing |
+| `-q, --quiet` | `false` | Suppress non-essential output |
+| `-c, --clipboard` | `false` | Copy output to clipboard |
+| `--backup-dir <path>` | — | Directory for backup copies before deletion |
+
+#### Commands Overview
+
+```
+opencode-manager
+├── projects
+│   ├── list      List projects (--missing-only, --search)
+│   └── delete    Delete project metadata (--id, --yes, --dry-run, --backup-dir)
+├── sessions
+│   ├── list      List sessions (--project, --search)
+│   ├── delete    Delete session metadata (--session, --yes, --dry-run, --backup-dir)
+│   ├── rename    Rename a session (--session, --title)
+│   ├── move      Move session to another project (--session, --to)
+│   └── copy      Copy session to another project (--session, --to)
+├── chat
+│   ├── list      List messages in a session (--session, --include-parts)
+│   ├── show      Show a specific message (--session, --message or --index)
+│   └── search    Search chat content across sessions (--query, --project)
+├── tokens
+│   ├── session   Show token usage for a session (--session)
+│   ├── project   Show token usage for a project (--project)
+│   └── global    Show global token usage
+└── tui           Launch the Terminal UI
+```
+
+#### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | General error |
+| 2 | Usage error (missing required options, invalid arguments) |
+| 3 | Resource not found (invalid project/session/message ID) |
+| 4 | File operation error (backup or delete failure) |
 
 ## Development Workflow
 1. Install dependencies with `bun install`.

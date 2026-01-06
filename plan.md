@@ -591,7 +591,11 @@
       - Tests verify: flag recognition, all output formats, -c short flag, multi-part messages, error handling
 
 ## Phase 5 - Docs and Validation
-- [ ] Add CLI usage section to `README.md` (commands and global flags).
+- [x] Add CLI usage section to `README.md` (commands and global flags).
+      - Added "Command Line Interface (CLI)" subsection under Usage
+      - Documented all global options (--root, --format, --limit, --sort, --yes, --dry-run, --quiet, --clipboard, --backup-dir)
+      - Added commands overview tree showing all subcommands and their options
+      - Added exit codes table (0-4) with meanings
 - [ ] Add CLI examples for json/ndjson/table outputs to `README.md`.
 - [ ] Document clipboard support limitations (Linux/macOS).
 - [ ] Update `PROJECT-SUMMARY.md` with new CLI/TUI architecture.
