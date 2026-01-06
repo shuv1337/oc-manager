@@ -10,6 +10,7 @@ import { parseGlobalOptions, type GlobalOptions } from "../index"
 import {
   loadSessionRecords,
   deleteSessionMetadata,
+  updateSessionTitle,
   type SessionRecord,
 } from "../../lib/opencode-data"
 import {
@@ -21,7 +22,7 @@ import {
 } from "../output"
 import { fuzzySearch, type SearchCandidate } from "../../lib/search"
 import { resolveSessionId } from "../resolvers"
-import { requireConfirmation, withErrorHandling, FileOperationError } from "../errors"
+import { requireConfirmation, withErrorHandling, FileOperationError, UsageError } from "../errors"
 import { copyToBackupDir, formatBackupResult } from "../backup"
 
 /**
@@ -143,14 +144,17 @@ export function registerSessionsCommands(parent: Command): void {
     .description("Rename a session")
     .requiredOption("--session <sessionId>", "Session ID to rename")
     .requiredOption("-t, --title <title>", "New title for the session")
-    .action(function (this: Command) {
+    .action(async function (this: Command) {
       const globalOpts = parseGlobalOptions(collectOptions(this))
       const cmdOpts = this.opts()
       const renameOpts: SessionsRenameOptions = {
         session: String(cmdOpts.session),
         title: String(cmdOpts.title),
       }
-      handleSessionsRename(globalOpts, renameOpts)
+      await withErrorHandling(handleSessionsRename, getOutputOptions(globalOpts).format)(
+        globalOpts,
+        renameOpts
+      )
     })
 
   sessions
@@ -341,14 +345,41 @@ async function handleSessionsDelete(
 
 /**
  * Handle the sessions rename command.
+ *
+ * This command updates a session's title in its metadata file.
+ *
+ * Exit codes:
+ * - 0: Success
+ * - 2: Usage error (empty title provided)
+ * - 3: Session not found
  */
-function handleSessionsRename(
+async function handleSessionsRename(
   globalOpts: GlobalOptions,
   renameOpts: SessionsRenameOptions
-): void {
-  console.log("sessions rename: not yet implemented")
-  console.log("Global options:", globalOpts)
-  console.log("Rename options:", renameOpts)
+): Promise<void> {
+  const outputOpts = getOutputOptions(globalOpts)
+
+  // Validate non-empty title
+  const newTitle = renameOpts.title.trim()
+  if (!newTitle) {
+    throw new UsageError("Title cannot be empty")
+  }
+
+  // Resolve session ID to a session record
+  const { session } = await resolveSessionId(renameOpts.session, {
+    root: globalOpts.root,
+    allowPrefix: true,
+  })
+
+  // Update the session title
+  await updateSessionTitle(session.filePath, newTitle)
+
+  // Output success
+  printSuccessOutput(
+    `Renamed session: ${session.sessionId}`,
+    { sessionId: session.sessionId, title: newTitle },
+    outputOpts.format
+  )
 }
 
 /**

@@ -427,11 +427,22 @@
       - Tests verify: exit code 2, error mentions --yes flag, error suggests --dry-run
 
 ### Sessions rename
-- [ ] Add `sessions rename` options (`--session`, `--title`).
-- [ ] Validate non-empty title before mutation.
-- [ ] Implement rename using `updateSessionTitle`.
-- [ ] Return exit code 3 when session id is invalid.
-- [ ] Add tests for rename success and validation failure.
+- [x] Add `sessions rename` options (`--session`, `--title`).
+      - Options already defined in `src/cli/commands/sessions.ts` (lines 141-154)
+      - `--session` (required): Session ID to rename
+      - `-t, --title` (required): New title for the session
+- [x] Validate non-empty title before mutation.
+      - Trims whitespace and throws `UsageError` (exit code 2) if title is empty
+- [x] Implement rename using `updateSessionTitle`.
+      - Uses `resolveSessionId()` with prefix matching to find session
+      - Calls `updateSessionTitle()` from opencode-data layer
+      - Outputs success message with sessionId and new title
+- [x] Return exit code 3 when session id is invalid.
+      - Handled by `resolveSessionId()` throwing `NotFoundError`
+      - Wrapped with `withErrorHandling()` for consistent error output
+- [x] Add tests for rename success and validation failure.
+      - Added 7 tests in `tests/cli/commands/sessions.test.ts` under `describe("sessions rename")`
+      - Tests cover: success, file update verification, prefix matching, exit code 3, exit code 2, error message, whitespace trimming
 
 ### Sessions move
 - [ ] Add `sessions move` options (`--session`, `--to`).

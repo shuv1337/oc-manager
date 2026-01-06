@@ -532,3 +532,86 @@ describe("sessions delete requires --yes", () => {
     expect(parsed.error).toContain("--dry-run");
   });
 });
+
+describe("sessions rename", () => {
+  let tempDir: string;
+  let tempRoot: string;
+
+  beforeEach(async () => {
+    // Create temporary directories for each test
+    tempDir = await fs.mkdtemp(join(tmpdir(), "opencode-test-"));
+    tempRoot = join(tempDir, "store");
+
+    // Copy fixture store to temp directory
+    await fs.cp(FIXTURE_STORE_ROOT, tempRoot, { recursive: true });
+  });
+
+  afterEach(async () => {
+    // Clean up temp directory
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("renames a session successfully", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions rename --session session_add_tests --title "New Title" --root ${tempRoot} --format json`.quiet();
+    
+    expect(result.exitCode).toBe(0);
+    
+    const parsed = JSON.parse(result.stdout.toString());
+    expect(parsed).toHaveProperty("ok", true);
+    expect(parsed.data).toHaveProperty("sessionId", "session_add_tests");
+    expect(parsed.data).toHaveProperty("title", "New Title");
+  });
+
+  it("updates the session file with new title", async () => {
+    await $`bun src/bin/opencode-manager.ts sessions rename --session session_add_tests --title "Updated Title" --root ${tempRoot} --format json`.quiet();
+
+    // Verify the file was updated by listing sessions
+    const listResult = await $`bun src/bin/opencode-manager.ts sessions list --root ${tempRoot} --format json`.quiet();
+    const parsed = JSON.parse(listResult.stdout.toString());
+    
+    const session = parsed.data.find((s: { sessionId: string }) => s.sessionId === "session_add_tests");
+    expect(session.title).toBe("Updated Title");
+  });
+
+  it("supports prefix matching for session ID", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions rename --session session_add --title "Prefix Match" --root ${tempRoot} --format json`.quiet();
+    
+    expect(result.exitCode).toBe(0);
+    
+    const parsed = JSON.parse(result.stdout.toString());
+    expect(parsed.data.sessionId).toBe("session_add_tests");
+    expect(parsed.data.title).toBe("Prefix Match");
+  });
+
+  it("returns exit code 3 for non-existent session", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions rename --session nonexistent --title "Test" --root ${tempRoot} --format json`.quiet().nothrow();
+    
+    expect(result.exitCode).toBe(3);
+  });
+
+  it("returns exit code 2 for empty title", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions rename --session session_add_tests --title "   " --root ${tempRoot} --format json`.quiet().nothrow();
+    
+    expect(result.exitCode).toBe(2);
+  });
+
+  it("error message mentions empty title validation", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts sessions rename --session session_add_tests --title "   " --root ${tempRoot} --format json`.quiet().nothrow();
+    const output = result.stderr.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed).toHaveProperty("ok", false);
+    expect(parsed.error.toLowerCase()).toContain("empty");
+  });
+
+  it("trims whitespace from title", async () => {
+    await $`bun src/bin/opencode-manager.ts sessions rename --session session_add_tests --title "  Trimmed Title  " --root ${tempRoot} --format json`.quiet();
+
+    // Verify the file was updated with trimmed title
+    const listResult = await $`bun src/bin/opencode-manager.ts sessions list --root ${tempRoot} --format json`.quiet();
+    const parsed = JSON.parse(listResult.stdout.toString());
+    
+    const session = parsed.data.find((s: { sessionId: string }) => s.sessionId === "session_add_tests");
+    expect(session.title).toBe("Trimmed Title");
+  });
+});
