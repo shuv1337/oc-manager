@@ -109,8 +109,10 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: No discrepancies - README accurately documents all tokens command flags
 
 ### 1.7 TUI Command Audit
-- [ ] Read `src/cli/commands/tui.ts` line 30
-- [ ] Note the `tui` subcommand description
+- [x] Read `src/cli/commands/tui.ts` line 30
+  - **Finding**: Line 30 contains `.description("Launch the Terminal UI")`
+- [x] Note the `tui` subcommand description
+  - **Finding**: The description is `"Launch the Terminal UI"`
 - [ ] Verify TUI help routing behavior
 
 ### 1.8 Help Routing Audit
@@ -572,11 +574,11 @@ When documentation and code conflict, resolve using this priority:
 | Phase | Tasks | Completed | Progress |
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
-| Phase 1 | 54 | 33 | 61% |
+| Phase 1 | 54 | 35 | 65% |
 | Phase 2 | 78 | 0 | 0% |
 | Phase 2a | 28 | 0 | 0% |
 | Phase 2b | 7 | 0 | 0% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **227** | **33** | **14.5%** |
+| **Total** | **227** | **35** | **15.4%** |
