@@ -300,12 +300,22 @@
       - Implemented `handleTokensGlobal()` in `src/cli/commands/tokens.ts`
       - Uses `loadSessionRecords()` to get all sessions, `computeGlobalTokenSummary()` for token data
       - Outputs via `printAggregateTokensOutput()` supporting json/ndjson/table formats
-- [ ] Implement session token summary using existing token helpers.
-- [ ] Implement project token summary using existing token helpers.
-- [ ] Implement global token summary using existing token helpers.
-- [ ] Wire tokens output through `output.ts` (json/table).
-- [ ] Add JSON output tests for tokens session/project/global.
-- [ ] Add table output tests for tokens session/project/global.
+- [x] Implement session token summary using existing token helpers.
+      - Already implemented in `handleTokensSession()` using `computeSessionTokenSummary()`
+- [x] Implement project token summary using existing token helpers.
+      - Already implemented in `handleTokensProject()` using `computeProjectTokenSummary()`
+- [x] Implement global token summary using existing token helpers.
+      - Already implemented in `handleTokensGlobal()` using `computeGlobalTokenSummary()`
+- [x] Wire tokens output through `output.ts` (json/table).
+      - Uses `printTokensOutput()` and `printAggregateTokensOutput()` from output.ts
+      - Supports json, ndjson, and table formats
+- [x] Add JSON output tests for tokens session/project/global.
+      - Created `tests/cli/commands/tokens.test.ts` with 29 tests
+      - Tests cover JSON envelope, token breakdown fields, error handling (exit code 3)
+      - Tests verify session, project, and global token summaries
+- [x] Add table output tests for tokens session/project/global.
+      - Included in `tests/cli/commands/tokens.test.ts`
+      - Tests verify headers, category rows, total row, and labels
 
 ## Phase 3 - Mutating Commands
 - [ ] Add CLI helper to resolve session IDs to session records.
