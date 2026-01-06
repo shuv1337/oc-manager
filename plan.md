@@ -144,7 +144,11 @@
       - Auto-detects TTY for pretty printing, handles Date serialization to ISO strings
       - Added corresponding `print*` functions for stdout output
       - Added tests in `tests/cli/formatters/json.test.ts` (20 tests)
-- [ ] Create `src/cli/formatters/ndjson.ts` for streaming record arrays.
+- [x] Create `src/cli/formatters/ndjson.ts` for streaming record arrays.
+      - Created formatter with `formatNdjsonLine()`, `formatNdjson()`, `streamNdjson()` for streaming
+      - Added `printNdjson()` and `streamPrintNdjson()` for stdout output
+      - Handles Date serialization to ISO strings (matching JSON formatter)
+      - Added tests in `tests/cli/formatters/ndjson.test.ts` (14 tests)
 - [ ] Create `src/cli/formatters/table.ts` with column definitions for `projects list`.
 - [ ] Extend table formatter for `sessions list` columns and truncation.
 - [ ] Extend table formatter for `chat list` columns and truncation.
