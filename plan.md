@@ -539,7 +539,12 @@
       - Ordering tests verify createdAt ascending (oldest first), messageId tiebreaker, consistent ordering
       - Index numbering tests verify 1-based indexes, sequential assignment, index-1 = oldest message
       - Additional tests for --include-parts flag, --limit option, prefix matching, exit code 3
-- [ ] Add `chat show` options (`--session`, `--message`, `--index`, `--clipboard`).
+- [x] Add `chat show` options (`--session`, `--message`, `--index`, `--clipboard`).
+      - Updated `src/cli/commands/chat.ts` with full implementation
+      - Added `-c, --clipboard` option to copy message content to clipboard
+      - Updated `ChatShowOptions` interface with clipboard field
+      - Uses `copyToClipboard()` from `src/lib/clipboard.ts`
+      - Wrapped action with `withErrorHandling()` for consistent error output
 - [ ] Implement chat show by `--message` id.
 - [ ] Implement chat show by `--index` (1-based).
 - [ ] Return exit code 3 when message id or index is invalid.

@@ -12,12 +12,15 @@ import {
   hydrateChatMessageParts,
   type ChatMessage,
 } from "../../lib/opencode-data"
+import { copyToClipboard } from "../../lib/clipboard"
 import { resolveSessionId } from "../resolvers"
-import { withErrorHandling } from "../errors"
+import { withErrorHandling, UsageError, NotFoundError } from "../errors"
 import {
   getOutputOptions,
   printChatOutput,
+  printChatMessageOutput,
   type IndexedChatMessage,
+  type OutputFormat,
 } from "../output"
 
 /**
@@ -54,6 +57,8 @@ export interface ChatShowOptions {
   message?: string
   /** Message index (1-based) to show */
   index?: number
+  /** Copy message content to clipboard */
+  clipboard?: boolean
 }
 
 /**
@@ -98,15 +103,20 @@ export function registerChatCommands(parent: Command): void {
     .requiredOption("--session <sessionId>", "Session ID containing the message")
     .option("-m, --message <messageId>", "Message ID to show")
     .option("-i, --index <number>", "Message index (1-based) to show")
-    .action(function (this: Command) {
+    .option("-c, --clipboard", "Copy message content to clipboard")
+    .action(async function (this: Command) {
       const globalOpts = parseGlobalOptions(collectOptions(this))
       const cmdOpts = this.opts()
       const showOpts: ChatShowOptions = {
         session: String(cmdOpts.session),
         message: cmdOpts.message as string | undefined,
         index: cmdOpts.index ? parseInt(String(cmdOpts.index), 10) : undefined,
+        clipboard: Boolean(cmdOpts.clipboard),
       }
-      handleChatShow(globalOpts, showOpts)
+      await withErrorHandling(handleChatShow, globalOpts.format)(
+        globalOpts,
+        showOpts
+      )
     })
 
   chat
@@ -169,14 +179,95 @@ async function handleChatList(
 
 /**
  * Handle the chat show command.
+ *
+ * Shows a specific message by ID or 1-based index.
+ * Optionally copies the message content to clipboard.
  */
-function handleChatShow(
+async function handleChatShow(
   globalOpts: GlobalOptions,
   showOpts: ChatShowOptions
-): void {
-  console.log("chat show: not yet implemented")
-  console.log("Global options:", globalOpts)
-  console.log("Show options:", showOpts)
+): Promise<void> {
+  // Validate that either --message or --index is provided
+  if (!showOpts.message && showOpts.index === undefined) {
+    throw new UsageError(
+      "Either --message <messageId> or --index <number> is required"
+    )
+  }
+  if (showOpts.message && showOpts.index !== undefined) {
+    throw new UsageError(
+      "Cannot use both --message and --index. Use one or the other."
+    )
+  }
+
+  // Resolve session ID (with prefix matching)
+  const { session } = await resolveSessionId(showOpts.session, {
+    root: globalOpts.root,
+    allowPrefix: true,
+  })
+
+  // Load all messages for the session
+  const messages = await loadSessionChatIndex(session.sessionId, globalOpts.root)
+
+  if (messages.length === 0) {
+    throw new NotFoundError(
+      `Session "${session.sessionId}" has no messages`,
+      "message"
+    )
+  }
+
+  let message: ChatMessage | undefined
+
+  if (showOpts.message) {
+    // Find by message ID (exact or prefix match)
+    const messageId = showOpts.message
+    message = messages.find((m) => m.messageId === messageId)
+    if (!message) {
+      // Try prefix matching
+      const prefixMatches = messages.filter((m) =>
+        m.messageId.startsWith(messageId)
+      )
+      if (prefixMatches.length === 1) {
+        message = prefixMatches[0]
+      } else if (prefixMatches.length > 1) {
+        throw new NotFoundError(
+          `Ambiguous message ID prefix "${messageId}" matches ${prefixMatches.length} messages: ${prefixMatches.map((m) => m.messageId).join(", ")}`,
+          "message"
+        )
+      } else {
+        throw new NotFoundError(
+          `Message "${messageId}" not found in session "${session.sessionId}"`,
+          "message"
+        )
+      }
+    }
+  } else {
+    // Find by index (1-based)
+    const index = showOpts.index!
+    if (index < 1 || index > messages.length) {
+      throw new NotFoundError(
+        `Message index ${index} is out of range. Session has ${messages.length} message(s).`,
+        "message"
+      )
+    }
+    message = messages[index - 1]
+  }
+
+  // Hydrate message parts to get full content
+  const hydratedMessage = await hydrateChatMessageParts(message, globalOpts.root)
+
+  // Copy to clipboard if requested
+  if (showOpts.clipboard) {
+    const content = hydratedMessage.parts
+      ?.map((p) => p.text)
+      .join("\n\n") ?? hydratedMessage.previewText
+    await copyToClipboard(content)
+    if (globalOpts.format === "table") {
+      console.log("(copied to clipboard)")
+    }
+  }
+
+  // Output the message
+  printChatMessageOutput(hydratedMessage, globalOpts.format)
 }
 
 /**
