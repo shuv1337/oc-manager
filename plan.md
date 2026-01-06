@@ -236,7 +236,10 @@
       - Added 8 tests in `tests/cli/commands/projects.test.ts` under `describe("projects list --format ndjson")`
       - Tests verify: valid NDJSON format, project count, field presence, ISO date serialization
       - Tests verify: no envelope wrapper (raw records), --missing-only, --search, --limit filters
-- [ ] Add table output test for `projects list`.
+- [x] Add table output test for `projects list`.
+      - Added 8 tests in `tests/cli/commands/projects.test.ts` under `describe("projects list --format table")`
+      - Tests verify: headers present, header underline, data rows, correct row count
+      - Tests verify: state column visual indicators, --missing-only, --search, --limit filters
 
 ### Sessions list
 - [ ] Add `sessions list` options (`--project`, `--search`, `--sort`, `--limit`).
