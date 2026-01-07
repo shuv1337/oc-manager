@@ -660,8 +660,10 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: Clear and concise - correctly describes cross-project aggregation
 
 ### 2a.6 TUI Command Description
-- [ ] Review `src/cli/commands/tui.ts:30` - "Launch the Terminal UI"
-- [ ] Consider adding more detail about TUI features
+- [x] Review `src/cli/commands/tui.ts:30` - "Launch the Terminal UI"
+  - **Finding**: Description was minimal (4 words) compared to other commands
+- [x] Consider adding more detail about TUI features
+  - **Fixed**: Updated to "Launch the Terminal UI for interactive project management" - more informative while staying concise
 
 ### 2a.7 Option Help Strings
 - [ ] Review all `--root` option descriptions across commands
@@ -845,12 +847,12 @@ When documentation and code conflict, resolve using this priority:
 | Phase 0 | 3 | 0 | 0% |
 | Phase 1 | 59 | 59 | 100% |
 | Phase 2 | 93 | 93 | 100% |
-| Phase 2a | 28 | 19 | 68% |
+| Phase 2a | 28 | 21 | 75% |
 | Phase 2b | 7 | 1 | 14% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **247** | **172** | **69.6%** |
+| **Total** | **247** | **174** | **70.4%** |
 
 *Note: Phase 2.14-2.16 (12 tasks) verified complete on 2026-01-06*
 *Note: Phase 2.17 sessions list example verified 2026-01-06*

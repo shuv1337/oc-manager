@@ -27,7 +27,7 @@ function collectOptions(cmd: Command): OptionValues {
 export function registerTUICommand(parent: Command): void {
   parent
     .command("tui")
-    .description("Launch the Terminal UI")
+    .description("Launch the Terminal UI for interactive project management")
     .action(async function (this: Command) {
       const globalOpts = parseGlobalOptions(collectOptions(this))
       const { launchTUI } = await import("../../tui/index")
