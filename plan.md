@@ -807,12 +807,22 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: "1.3.0+" follows standard semver notation, consistent with package.json `>=1.3.0`
 
 ### 4.3 Commander.js Reference
-- [ ] If documented: verify GitHub URL is correct
-- [ ] Verify any usage notes are accurate
+- [x] If documented: verify GitHub URL is correct
+  - **Finding**: No GitHub URL for Commander.js in main docs (README.md, PROJECT-SUMMARY.md)
+  - **Finding**: References in README.md:172, PROJECT-SUMMARY.md:8,20 use descriptive text ("Commander-based CLI", "Commander.js help") without direct URL
+  - **Note**: `commander` ^12.0.0 confirmed in package.json:49
+- [x] Verify any usage notes are accurate
+  - **Finding**: PROJECT-SUMMARY.md accurately describes "Commander program with global options" and "Commander-based CLI"
+  - **Finding**: README.md:172 correctly states "CLI subcommands use standard Commander.js help showing options and usage"
 
 ### 4.4 fast-fuzzy Reference
-- [ ] If documented: verify GitHub URL is correct
-- [ ] Verify search behavior description matches library semantics
+- [x] If documented: verify GitHub URL is correct
+  - **Finding**: No GitHub URL for fast-fuzzy in main docs (README.md, PROJECT-SUMMARY.md)
+  - **Finding**: PROJECT-SUMMARY.md:43 mentions "fast-fuzzy" by name without URL
+  - **Note**: `fast-fuzzy` confirmed in package.json as dependency; actual URL is https://github.com/EthanRutherford/fast-fuzzy
+- [x] Verify search behavior description matches library semantics
+  - **Finding**: PROJECT-SUMMARY.md:43 says "Fuzzy search via fast-fuzzy (sessions) and tokenized search (projects)"
+  - **Verified**: src/lib/search.ts confirms this - `Searcher` from fast-fuzzy used for sessions (line 5, 45-47), tokenized substring search for projects (lines 141-170)
 
 ---
 
@@ -962,7 +972,7 @@ When documentation and code conflict, resolve using this priority:
 | Phase 2a | 31 | 31 | 100% |
 | Phase 2b | 7 | 7 | 100% |
 | Phase 3 | 11 | 11 | 100% |
-| Phase 4 | 6 | 4 | 67% |
+| Phase 4 | 6 | 6 | 100% |
 | Phase 5 | 40 | 47 | 118% |
 | **Total** | **250** | **252** | **100.8%** |
 
