@@ -983,7 +983,9 @@ When documentation and code conflict, resolve using this priority:
   - **Verified 2026-01-06**: All 19 `.description()` strings in source code match README.md Commands Overview (lines 121-143). Minor abbreviations in README are semantically equivalent.
 - [x] CLI help output matches docs for each subcommand
   - **Verified 2026-01-06**: All 16 subcommand help outputs verified against README.md:121-143. Every command (projects list/delete, sessions list/delete/rename/move/copy, chat list/show/search, tokens session/project/global) has matching description and flags.
-- [ ] TUI key bindings match `src/tui/args.ts`
+- [x] TUI key bindings match `src/tui/args.ts`
+  - **Verified 2026-01-06**: All key bindings in README.md:96-101 match src/tui/args.ts:22-64 exactly
+  - **Verified**: PROJECT-SUMMARY.md:155-158 has core key bindings (intentionally brief, omits Chat sections)
 - [ ] Data model matches `src/lib/opencode-data.ts`
 - [ ] Token summary docs include `kind`/`reason`/`unknownSessions`
 - [ ] CLI exit codes match `src/cli/errors.ts`
