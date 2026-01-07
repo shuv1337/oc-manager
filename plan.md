@@ -800,8 +800,11 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: README says "renders with `@opentui/react`" - accurate per npm package description
 
 ### 4.2 Bun Reference
-- [ ] Verify Bun GitHub URL is correct
-- [ ] Verify version requirement language is standard
+- [x] Verify Bun GitHub URL is correct
+  - **Finding**: README.md:61 links to `https://bun.sh` (official website) - verified correct and accessible
+  - **Note**: Website is the appropriate user-facing link (GitHub is `github.com/oven-sh/bun` for development)
+- [x] Verify version requirement language is standard
+  - **Finding**: "1.3.0+" follows standard semver notation, consistent with package.json `>=1.3.0`
 
 ### 4.3 Commander.js Reference
 - [ ] If documented: verify GitHub URL is correct
@@ -911,9 +914,9 @@ When documentation and code conflict, resolve using this priority:
 | Phase 2a | 31 | 31 | 100% |
 | Phase 2b | 7 | 7 | 100% |
 | Phase 3 | 11 | 11 | 100% |
-| Phase 4 | 6 | 2 | 33% |
+| Phase 4 | 6 | 4 | 67% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **250** | **203** | **81.2%** |
+| **Total** | **250** | **205** | **82%** |
 
 *Note: Phase 2.14-2.16 (12 tasks) verified complete on 2026-01-06*
 *Note: Phase 2.17 sessions list example verified 2026-01-06*
