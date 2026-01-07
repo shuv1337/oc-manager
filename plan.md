@@ -919,9 +919,12 @@ When documentation and code conflict, resolve using this priority:
   - **Verified**: No additional options, matches README.md:141
 
 ### 5b: Help Output Validation - TUI
-- [ ] Run `bun run src/bin/opencode-manager.ts tui --help`
-- [ ] Verify shows TUI help (not Commander help)
-- [ ] Document this routing behavior in README
+- [x] Run `bun run src/bin/opencode-manager.ts tui --help`
+  - **Verified**: Shows TUI help with all key bindings (Global, Projects, Sessions, Chat search, Chat viewer sections)
+- [x] Verify shows TUI help (not Commander help)
+  - **Verified**: Output shows "OpenCode Metadata TUI" header with key bindings, NOT Commander CLI help
+- [x] Document this routing behavior in README
+  - **Verified**: Already documented in README.md:156 ("Note that `tui --help` shows the TUI help screen (key bindings), not Commander CLI help") and README.md:166 (Help Routing table)
 
 ### 5c: Example Command Validation
 - [ ] Run `bun run src/bin/opencode-manager.ts projects list --format json`
@@ -960,8 +963,8 @@ When documentation and code conflict, resolve using this priority:
 | Phase 2b | 7 | 7 | 100% |
 | Phase 3 | 11 | 11 | 100% |
 | Phase 4 | 6 | 4 | 67% |
-| Phase 5 | 40 | 44 | 110% |
-| **Total** | **250** | **249** | **99.6%** |
+| Phase 5 | 40 | 47 | 118% |
+| **Total** | **250** | **252** | **100.8%** |
 
 *Note: Phase 2.14-2.16 (12 tasks) verified complete on 2026-01-06*
 *Note: Phase 2.17 sessions list example verified 2026-01-06*
@@ -971,3 +974,4 @@ When documentation and code conflict, resolve using this priority:
 *Note: Phase 5b Sessions help validation (10 tasks) verified complete on 2026-01-06 - all subcommands verified*
 *Note: Phase 5b Chat help validation (8 tasks) verified complete on 2026-01-06 - all subcommands verified*
 *Note: Phase 5b Tokens help validation (8 tasks) verified complete on 2026-01-06 - all 3 subcommand help outputs verified*
+*Note: Phase 5b TUI help validation (3 tasks) verified complete on 2026-01-06 - TUI help routing confirmed, already documented in README*
