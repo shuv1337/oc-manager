@@ -754,14 +754,20 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: All example JSON in fixture README matches opencode-data.ts schemas
 
 ### 3.2 plan.md Status
-- [ ] Add header marking this as active backlog
-- [ ] Add creation date
-- [ ] Add completion tracking
+- [x] Add header marking this as active backlog
+  - **Finding**: Already present at line 3: "Status: Active implementation backlog"
+- [x] Add creation date
+  - **Finding**: Already present at line 4: "Created: 2026-01-06"
+- [x] Add completion tracking
+  - **Finding**: Already present at lines 883-899 (Completion Tracking section)
 
 ### 3.3 Legacy Wrapper Documentation
-- [ ] Check `manage_opencode_projects.py` header comments
-- [ ] Update if wrapper behavior has changed
-- [ ] Verify README references (if any) are accurate
+- [x] Check `manage_opencode_projects.py` header comments
+  - **Finding**: Comprehensive docstring (lines 2-13) accurately documents purpose, routing logic, and usage examples
+- [x] Update if wrapper behavior has changed
+  - **Finding**: No changes needed - behavior matches documentation exactly
+- [x] Verify README references (if any) are accurate
+  - **Finding**: README.md:93 and README.md:431 references are accurate
 
 ### 3.4 Screenshots
 - [ ] Compare `home-screen.png` to current TUI
@@ -889,10 +895,10 @@ When documentation and code conflict, resolve using this priority:
 | Phase 2 | 93 | 93 | 100% |
 | Phase 2a | 31 | 31 | 100% |
 | Phase 2b | 7 | 7 | 100% |
-| Phase 3 | 11 | 7 | 64% |
+| Phase 3 | 11 | 11 | 100% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **250** | **197** | **78.8%** |
+| **Total** | **250** | **201** | **80.4%** |
 
 *Note: Phase 2.14-2.16 (12 tasks) verified complete on 2026-01-06*
 *Note: Phase 2.17 sessions list example verified 2026-01-06*
