@@ -586,17 +586,26 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: All flag names in examples verified against source code - no discrepancies found
 
 ### 2.18 PROJECT-SUMMARY.md Architecture
-- [ ] Update file tree to match current `src/` structure
-- [ ] Add any new modules to the list
-- [ ] Remove any deleted modules
-- [ ] Update module descriptions
+- [x] Update file tree to match current `src/` structure
+  - **Finding**: Phase 1.16 verified all 20 source files match exactly - no discrepancies
+- [x] Add any new modules to the list
+  - **Finding**: No new modules to add - architecture section is complete
+- [x] Remove any deleted modules
+  - **Finding**: No deleted modules - all documented modules exist
+- [x] Update module descriptions
+  - **Finding**: All descriptions verified accurate against source code
 
 ### 2.19 PROJECT-SUMMARY.md Features
-- [ ] Update CLI feature summary
-- [ ] Update TUI feature summary
-- [ ] Update data layer feature summary
-- [ ] Add token handling description
-- [ ] Add search behavior description
+- [x] Update CLI feature summary
+  - **Finding**: CLI features documented in Architecture section (lines 19-34) and How To Run section (lines 127-133) - already complete
+- [x] Update TUI feature summary
+  - **Fixed**: Added chat viewer (V) and chat search (F) features to Sessions panel section
+- [x] Update data layer feature summary
+  - **Finding**: Data layer documented in Metadata Layout & Helpers section (lines 50-56) - already complete
+- [x] Add token handling description
+  - **Finding**: Token commands documented in Architecture (line 25) and How To Run (line 131) - already complete
+- [x] Add search behavior description
+  - **Finding**: Search behavior documented in Key Features (lines 75-78) and Architecture (line 43) - already complete
 
 ---
 
@@ -818,13 +827,13 @@ When documentation and code conflict, resolve using this priority:
 |-------|-------|-----------|----------|
 | Phase 0 | 3 | 0 | 0% |
 | Phase 1 | 59 | 59 | 100% |
-| Phase 2 | 93 | 83 | 89% |
+| Phase 2 | 93 | 93 | 100% |
 | Phase 2a | 28 | 2 | 7% |
 | Phase 2b | 7 | 1 | 14% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **247** | **145** | **58.7%** |
+| **Total** | **247** | **155** | **62.8%** |
 
 *Note: Phase 2.14-2.16 (12 tasks) verified complete on 2026-01-06*
 *Note: Phase 2.17 sessions list example verified 2026-01-06*

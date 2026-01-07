@@ -69,6 +69,8 @@ Key Features
   - Rename sessions inline (Shift+R) with validation.
   - Move sessions to another project (M) with project selector.
   - Copy sessions to another project (P) with new session ID generation.
+  - View chat history (V) with message navigation and clipboard support.
+  - Search chat content (F) across sessions with fuzzy matching.
 - Projects ↔ Sessions workflow
   - Pressing Enter on a project jumps to the Sessions tab with the project filter set; status text confirms the active filter.
   - `C` clears the filter (and notifies the user) so global searches go back to all sessions.
