@@ -1007,8 +1007,10 @@ When documentation and code conflict, resolve using this priority:
     - `2` (USAGE_ERROR): "Usage error" matches README.md:341
     - `3` (NOT_FOUND): "Resource not found" matches README.md:342
     - `4` (FILE_ERROR): "File operation error" matches README.md:343
-- [ ] CLI version matches `package.json`
-- [ ] Requirements match `package.json`
+- [x] CLI version matches `package.json`
+  - **Verified 2026-01-06**: `package.json:3` has `"version": "0.3.1"` and `src/cli/index.ts:80` has `.version("0.3.1")` - exact match
+- [x] Requirements match `package.json`
+  - **Verified 2026-01-06**: README.md:61 says "Bun **1.3.0+**" and package.json:9 has `"bun": ">=1.3.0"` - requirements match
 - [ ] Screenshots match current UI
 
 ---
@@ -1024,8 +1026,8 @@ When documentation and code conflict, resolve using this priority:
 | Phase 2b | 7 | 7 | 100% |
 | Phase 3 | 11 | 11 | 100% |
 | Phase 4 | 6 | 6 | 100% |
-| Phase 5 | 40 | 51 | 128% |
-| **Total** | **250** | **256** | **102.4%** |
+| Phase 5 | 40 | 53 | 133% |
+| **Total** | **250** | **258** | **103.2%** |
 
 *Note: Phase 2.14-2.16 (12 tasks) verified complete on 2026-01-06*
 *Note: Phase 2.17 sessions list example verified 2026-01-06*
