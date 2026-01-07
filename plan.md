@@ -578,7 +578,8 @@ When documentation and code conflict, resolve using this priority:
   - **Fixed**: Removed `truncated` documentation from meta field list (README.md:234-236)
 - [x] Verify `chat list` example output matches current format
   - **Finding**: No dedicated `chat list` output example exists in README.md - only referenced in piping examples (line 266). No discrepancy to fix.
-- [ ] Verify `chat show` example output matches current format
+- [x] Verify `chat show` example output matches current format
+  - **Finding**: No dedicated `chat show` output example exists in README.md. The command is documented at line 136 with its flags. Output formats are: table (Message ID/Role/Created/Tokens/Content block), JSON (ChatMessage in envelope), NDJSON (single line). No example needed since format is straightforward and `chat list` piping example at line 266 demonstrates usage.
 - [ ] Verify `tokens` example output matches current format
 - [ ] Update any outdated flag names in examples
 
