@@ -191,11 +191,11 @@ The CLI supports three output formats via `--format`:
 ```bash
 $ bunx opencode-manager projects list --limit 3
 
-#   Project ID                           Worktree                          State   Updated     Created
-──────────────────────────────────────────────────────────────────────────────────────────────────────
-1   prj_abc123                           ~/repos/my-app                    ✓       Jan 05      Dec 28
-2   prj_def456                           ~/repos/api-server                ✓       Jan 04      Dec 15
-3   prj_missing                          ~/repos/deleted-project           ✗       Dec 20      Dec 01
+   #  State  Path                                                Project ID                Created
+----  -----  --------------------------------------------------  ------------------------  ----------------
+   1    ✓    /home/user/repos/my-app                             a1b2c3d4e5f6g7h8i9j0k1l2  2026-01-04 09:20
+   2    ✓    /home/user/repos/api-server                         b2c3d4e5f6g7h8i9j0k1l2m3  2026-01-03 14:15
+   3    ✗    /home/user/repos/deleted-project                    c3d4e5f6g7h8i9j0k1l2m3n4  2025-12-28 10:30
 ```
 
 **JSON** — Structured output with metadata envelope:

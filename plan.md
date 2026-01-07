@@ -570,7 +570,8 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: Confirmation is handled by --yes flag (CLI) and modal dialogs (TUI) - no separate key bindings needed
 
 ### 2.17 README.md Examples
-- [ ] Verify `projects list` example output matches current format
+- [x] Verify `projects list` example output matches current format
+  - **Fixed**: Updated README.md:194-198 to show correct column order: `# | State | Path | Project ID | Created`
 - [ ] Verify `sessions list` example output matches current format
 - [ ] Verify `chat list` example output matches current format
 - [ ] Verify `chat show` example output matches current format
