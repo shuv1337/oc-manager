@@ -650,10 +650,14 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: Accurately describes the cross-session search behavior
 
 ### 2a.5 Tokens Command Descriptions
-- [ ] Review `src/cli/commands/tokens.ts:57` - "View token usage statistics"
-- [ ] Review `src/cli/commands/tokens.ts:61` - "Show token usage for a session"
-- [ ] Review `src/cli/commands/tokens.ts:78` - "Show token usage for a project"
-- [ ] Review `src/cli/commands/tokens.ts:95` - "Show global token usage"
+- [x] Review `src/cli/commands/tokens.ts:57` - "View token usage statistics"
+  - **Finding**: Accurate parent command description - clearly describes the command's purpose
+- [x] Review `src/cli/commands/tokens.ts:61` - "Show token usage for a session"
+  - **Finding**: Clear and concise - correctly describes single-session scope
+- [x] Review `src/cli/commands/tokens.ts:78` - "Show token usage for a project"
+  - **Finding**: Accurate - correctly describes project-level aggregation
+- [x] Review `src/cli/commands/tokens.ts:95` - "Show global token usage"
+  - **Finding**: Clear and concise - correctly describes cross-project aggregation
 
 ### 2a.6 TUI Command Description
 - [ ] Review `src/cli/commands/tui.ts:30` - "Launch the Terminal UI"
@@ -841,12 +845,12 @@ When documentation and code conflict, resolve using this priority:
 | Phase 0 | 3 | 0 | 0% |
 | Phase 1 | 59 | 59 | 100% |
 | Phase 2 | 93 | 93 | 100% |
-| Phase 2a | 28 | 15 | 54% |
+| Phase 2a | 28 | 19 | 68% |
 | Phase 2b | 7 | 1 | 14% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **247** | **168** | **68.0%** |
+| **Total** | **247** | **172** | **69.6%** |
 
 *Note: Phase 2.14-2.16 (12 tasks) verified complete on 2026-01-06*
 *Note: Phase 2.17 sessions list example verified 2026-01-06*
