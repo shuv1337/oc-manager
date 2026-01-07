@@ -1039,3 +1039,4 @@ When documentation and code conflict, resolve using this priority:
 *Note: Phase 5b Tokens help validation (8 tasks) verified complete on 2026-01-06 - all 3 subcommand help outputs verified*
 *Note: Phase 5b TUI help validation (3 tasks) verified complete on 2026-01-06 - TUI help routing confirmed, already documented in README*
 *Note: Phase 5c Example Command Validation (4 tasks) verified complete on 2026-01-06 - JSON output matches README docs*
+*Note: All automated documentation tasks complete 2026-01-06. Only manual tasks remain: Phase 0 (3 decision checkpoints), Phase 3.4 (screenshot capture), Phase 5c (screenshot verification). Tests pass: 655/655.*
