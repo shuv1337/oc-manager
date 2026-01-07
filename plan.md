@@ -865,8 +865,10 @@ When documentation and code conflict, resolve using this priority:
   - **Verified**: Shows `-p, --project <projectId>` and `-s, --search <query>` options
 - [x] Verify shows list options
   - **Verified**: Both documented options displayed correctly
-- [ ] Run `bun run src/bin/opencode-manager.ts sessions delete --help`
-- [ ] Verify shows delete options
+- [x] Run `bun run src/bin/opencode-manager.ts sessions delete --help`
+  - **Verified**: Shows `--session`, `--yes`, `--dry-run`, `--backup-dir` options
+- [x] Verify shows delete options
+  - **Verified**: All four documented options displayed correctly
 - [ ] Run `bun run src/bin/opencode-manager.ts sessions rename --help`
 - [ ] Verify shows rename options
 - [ ] Run `bun run src/bin/opencode-manager.ts sessions move --help`
@@ -936,12 +938,12 @@ When documentation and code conflict, resolve using this priority:
 | Phase 2b | 7 | 7 | 100% |
 | Phase 3 | 11 | 11 | 100% |
 | Phase 4 | 6 | 4 | 67% |
-| Phase 5 | 40 | 20 | 50% |
-| **Total** | **250** | **225** | **90%** |
+| Phase 5 | 40 | 22 | 55% |
+| **Total** | **250** | **227** | **91%** |
 
 *Note: Phase 2.14-2.16 (12 tasks) verified complete on 2026-01-06*
 *Note: Phase 2.17 sessions list example verified 2026-01-06*
 *Note: Phase 5b Root help validation (4 tasks) verified complete on 2026-01-06*
 *Note: Phase 2a.7 (10 tasks) verified complete on 2026-01-06 - all options are global, defined once in src/cli/index.ts*
 *Note: Phase 5b Projects help validation (6 tasks) verified complete on 2026-01-06*
-*Note: Phase 5b Sessions help validation started (2 tasks) verified complete on 2026-01-06*
+*Note: Phase 5b Sessions help validation (4 tasks) verified complete on 2026-01-06 - list and delete verified*
