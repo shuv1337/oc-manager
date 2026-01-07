@@ -977,7 +977,8 @@ When documentation and code conflict, resolve using this priority:
     - `projects --help` shows "Usage: opencode-manager projects" (Commander CLI help) ✓
 
 ### 5c: Final Checklist
-- [ ] Every CLI flag documented matches source code
+- [x] Every CLI flag documented matches source code
+  - **Verified 2026-01-06**: All 9 global options and 21 command-specific flags match between source code and README.md:107-141
 - [ ] All 19 `.description()` strings reviewed
 - [ ] CLI help output matches docs for each subcommand
 - [ ] TUI key bindings match `src/tui/args.ts`
