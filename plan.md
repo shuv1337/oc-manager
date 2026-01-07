@@ -582,7 +582,8 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: No dedicated `chat show` output example exists in README.md. The command is documented at line 136 with its flags. Output formats are: table (Message ID/Role/Created/Tokens/Content block), JSON (ChatMessage in envelope), NDJSON (single line). No example needed since format is straightforward and `chat list` piping example at line 266 demonstrates usage.
 - [x] Verify `tokens` example output matches current format
   - **Fixed**: Updated README.md:246-256 NDJSON example - was showing incorrect per-category format with `category`, `tokens`, `percentage` fields; actual NDJSON is raw object without envelope. Changed example to `sessions list --format ndjson` which better demonstrates NDJSON (multiple lines) and added note explaining single-record NDJSON behavior.
-- [ ] Update any outdated flag names in examples
+- [x] Update any outdated flag names in examples
+  - **Finding**: All flag names in examples verified against source code - no discrepancies found
 
 ### 2.18 PROJECT-SUMMARY.md Architecture
 - [ ] Update file tree to match current `src/` structure
