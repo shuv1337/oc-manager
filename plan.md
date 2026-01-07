@@ -947,7 +947,18 @@ When documentation and code conflict, resolve using this priority:
   - **Verified**: Matches README.md:272-331 tokens documentation - `kind`, `knownOnly`, `unknownSessions` all present
 
 ### 5c: Documentation Consistency Check
-- [ ] Search README for all file paths and verify they exist
+- [x] Search README for all file paths and verify they exist
+  - **Verified**: All file paths in README checked against filesystem:
+    - `src/bin/opencode-manager.ts` ✓
+    - `src/tui/app.tsx` ✓
+    - `src/tui/index.tsx` ✓
+    - `manage_opencode_projects.py` ✓
+    - `opencode-gen.sh` ✓
+    - `PROJECT-SUMMARY.md` ✓
+    - `LICENSE` ✓
+    - `home-screen.png` ✓
+    - `help-screen.png` ✓
+  - **Note**: Storage paths (`storage/project/`, `storage/sessions/`, `storage/message/`) are runtime paths describing data layout, not source files
 - [ ] Search README for all script names and verify they work
 - [ ] Search README for all version numbers and verify accuracy
 - [ ] Verify help routing is documented correctly
