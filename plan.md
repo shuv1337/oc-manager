@@ -534,10 +534,10 @@ When documentation and code conflict, resolve using this priority:
   - **Finding**: Documented as "File operation error (backup or delete failure)" at README.md:341
 
 ### 2.13 README.md Delete Semantics
-- [ ] Document that delete removes metadata only
-- [ ] Document that session delete leaves message files
-- [ ] Document confirmation requirement (--yes flag)
-- [ ] Document dry-run behavior
+- [x] Document that delete removes metadata only
+- [x] Document that session delete leaves message files
+- [x] Document confirmation requirement (--yes flag)
+- [x] Document dry-run behavior
 
 ### 2.14 README.md Clipboard
 - [ ] Document `pbcopy` requirement on macOS

@@ -379,6 +379,40 @@ The `--clipboard` flag (or `Y` key in the TUI) copies content to the system clip
 
 On Linux, if `xclip` is not installed, clipboard operations will fail silently in the TUI or show an error message in the CLI.
 
+#### Delete Semantics
+
+Delete commands (`projects delete`, `sessions delete`) remove **metadata files only**:
+
+| Command | Deletes | Preserves |
+|---------|---------|-----------|
+| `projects delete` | Project metadata (`storage/project/<id>.json`) | Sessions, messages, parts |
+| `sessions delete` | Session metadata (`storage/sessions/<projectId>.json` entry) | Message and part files |
+
+**Safety features:**
+
+- **Confirmation required** — Destructive operations require `--yes` flag or interactive confirmation:
+  ```bash
+  # Will prompt for confirmation (interactive)
+  opencode-manager projects delete --id prj_abc123
+  
+  # Skip confirmation (scripts)
+  opencode-manager projects delete --id prj_abc123 --yes
+  ```
+
+- **Dry-run preview** — Use `--dry-run` to see what would be deleted without making changes:
+  ```bash
+  opencode-manager sessions delete --session sess_xyz789 --dry-run
+  # Output shows files that would be affected
+  ```
+
+- **Backup before delete** — Use `--backup-dir` to copy files before deletion:
+  ```bash
+  opencode-manager projects delete --id prj_abc123 --backup-dir ./backups --yes
+  # Creates backup, then deletes original
+  ```
+
+**Note:** Session deletion leaves associated chat message files intact. To fully remove a session's data, you would need to manually delete the message files from `storage/message/<sessionId>/`.
+
 ## Development Workflow
 1. Install dependencies with `bun install`.
 2. Run the TUI via `bun run tui` (pass storage flags after `--`).
