@@ -618,9 +618,12 @@ When documentation and code conflict, resolve using this priority:
   - **Decision**: KEEP AS-IS for future-proofing. Description is accurate even if currently not shown to users due to TUI help routing. No code change needed.
 
 ### 2a.2 Projects Command Descriptions
-- [ ] Review `src/cli/commands/projects.ts:71` - "Manage OpenCode projects"
-- [ ] Review `src/cli/commands/projects.ts:75` - "List projects"
-- [ ] Review `src/cli/commands/projects.ts:90` - "Delete a project's metadata file"
+- [x] Review `src/cli/commands/projects.ts:71` - "Manage OpenCode projects"
+  - **Finding**: Description is accurate and concise - correctly describes the parent command
+- [x] Review `src/cli/commands/projects.ts:75` - "List projects"
+  - **Finding**: Description is accurate - appropriately minimal for CLI help
+- [x] Review `src/cli/commands/projects.ts:90` - "Delete a project's metadata file"
+  - **Finding**: Description is accurate and specific - correctly clarifies that only metadata is deleted, not the project directory
 
 ### 2a.3 Sessions Command Descriptions
 - [ ] Review `src/cli/commands/sessions.ts:105` - "Manage OpenCode sessions"
@@ -828,12 +831,12 @@ When documentation and code conflict, resolve using this priority:
 | Phase 0 | 3 | 0 | 0% |
 | Phase 1 | 59 | 59 | 100% |
 | Phase 2 | 93 | 93 | 100% |
-| Phase 2a | 28 | 2 | 7% |
+| Phase 2a | 28 | 5 | 18% |
 | Phase 2b | 7 | 1 | 14% |
 | Phase 3 | 11 | 0 | 0% |
 | Phase 4 | 6 | 0 | 0% |
 | Phase 5 | 40 | 0 | 0% |
-| **Total** | **247** | **155** | **62.8%** |
+| **Total** | **247** | **158** | **64.0%** |
 
 *Note: Phase 2.14-2.16 (12 tasks) verified complete on 2026-01-06*
 *Note: Phase 2.17 sessions list example verified 2026-01-06*
