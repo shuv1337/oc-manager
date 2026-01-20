@@ -5,18 +5,51 @@
 
 Terminal UI for inspecting, filtering, and pruning OpenCode metadata stored on disk. The app is written in TypeScript, runs on Bun, and renders with [`@opentui/react`](https://github.com/sst/opentui).
 
+## Screenshot Gallery
+
+<div align="center">
+  <figure style="display: inline-block; margin: 0 12px 20px; width: 100%; max-width: 360px;">
+    <img src="oc-manager.png" alt="OpenCode Metadata Manager home screen showing projects and sessions" style="width: 100%; height: auto;" />
+    <figcaption><em>Main workspace with Projects (left) and Sessions (right) panels.</em></figcaption>
+  </figure>
+  <figure style="display: inline-block; margin: 0 12px 20px; width: 100%; max-width: 360px;">
+    <img src="oc-manager-home.png" alt="OpenCode Metadata Manager home screen alternate view" style="width: 100%; height: auto;" />
+    <figcaption><em>Alternate home view with project/session context.</em></figcaption>
+  </figure>
+  <figure style="display: inline-block; margin: 0 12px 20px; width: 100%; max-width: 360px;">
+    <img src="oc-manager-search.png" alt="OpenCode Metadata Manager search view" style="width: 100%; height: auto;" />
+    <figcaption><em>Fuzzy search across sessions with ranked results.</em></figcaption>
+  </figure>
+  <figure style="display: inline-block; margin: 0 12px 20px; width: 100%; max-width: 360px;">
+    <img src="oc-manager-cli.png" alt="OpenCode Metadata Manager CLI output" style="width: 100%; height: auto;" />
+    <figcaption><em>Scriptable CLI output for listing projects and sessions.</em></figcaption>
+  </figure>
+</div>
+
 ## Screenshots
 
 <p align="center">
-  <img src="home-screen.png" alt="OpenCode Metadata Manager home screen showing projects and sessions" width="85%" />
+  <img src="oc-manager.png" alt="OpenCode Metadata Manager home screen showing projects and sessions" width="85%" />
   <br />
   <em>Main workspace with Projects (left) and Sessions (right) panels.</em>
 </p>
 
 <p align="center">
-  <img src="help-screen.png" alt="OpenCode Metadata Manager help overlay" width="85%" />
+  <img src="oc-manager-home.png" alt="OpenCode Metadata Manager home screen alternate view" width="85%" />
   <br />
-  <em>Contextual help overlay with key bindings and tips.</em>
+  <em>Alternate home view with project/session context.</em>
+</p>
+
+<p align="center">
+  <img src="oc-manager-search.png" alt="OpenCode Metadata Manager search view" width="85%" />
+  <br />
+  <em>Fuzzy search across sessions with ranked results.</em>
+</p>
+
+<p align="center">
+  <img src="oc-manager-cli.png" alt="OpenCode Metadata Manager CLI output" width="85%" />
+  <br />
+  <em>Scriptable CLI output for listing projects and sessions.</em>
 </p>
 
 ## Features
