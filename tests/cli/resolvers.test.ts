@@ -2,10 +2,11 @@
  * Tests for CLI resolver helpers.
  *
  * Verifies session and project ID resolution with exact and prefix matching.
+ * Also tests DataProvider integration for backend-agnostic resolution.
  */
 
 import { describe, expect, it } from "bun:test"
-import { FIXTURE_STORE_ROOT } from "../helpers"
+import { FIXTURE_STORE_ROOT, FIXTURE_SQLITE_PATH } from "../helpers"
 import {
   findSessionById,
   findSessionsByPrefix,
@@ -21,6 +22,7 @@ import {
   type SessionRecord,
   type ProjectRecord,
 } from "../../src/lib/opencode-data"
+import { createProvider } from "../../src/lib/opencode-data-provider"
 
 // ========================
 // Session Resolution Tests
@@ -346,6 +348,98 @@ describe("Edge cases", () => {
       resolveProjectId("proj_pres", {
         root: FIXTURE_STORE_ROOT,
       })
+    ).rejects.toThrow(NotFoundError)
+  })
+})
+
+// ========================
+// DataProvider Integration Tests
+// ========================
+
+describe("resolveSessionId with DataProvider", () => {
+  it("should resolve session using JSONL provider", async () => {
+    const provider = createProvider({ backend: "jsonl", root: FIXTURE_STORE_ROOT })
+
+    const result = await resolveSessionId("session_add_tests", {
+      provider,
+    })
+
+    expect(result.session.sessionId).toBe("session_add_tests")
+    expect(result.matchType).toBe("exact")
+  })
+
+  it("should resolve session using SQLite provider", async () => {
+    const provider = createProvider({ backend: "sqlite", dbPath: FIXTURE_SQLITE_PATH })
+
+    const result = await resolveSessionId("session_add_tests", {
+      provider,
+    })
+
+    expect(result.session.sessionId).toBe("session_add_tests")
+    expect(result.matchType).toBe("exact")
+  })
+
+  it("should support prefix matching with provider", async () => {
+    const provider = createProvider({ backend: "sqlite", dbPath: FIXTURE_SQLITE_PATH })
+
+    const result = await resolveSessionId("session_add", {
+      provider,
+      allowPrefix: true,
+    })
+
+    expect(result.session.sessionId).toBe("session_add_tests")
+    expect(result.matchType).toBe("prefix")
+  })
+
+  it("should throw NotFoundError with provider for non-existent session", async () => {
+    const provider = createProvider({ backend: "sqlite", dbPath: FIXTURE_SQLITE_PATH })
+
+    await expect(
+      resolveSessionId("nonexistent_session", { provider })
+    ).rejects.toThrow(NotFoundError)
+  })
+})
+
+describe("resolveProjectId with DataProvider", () => {
+  it("should resolve project using JSONL provider", async () => {
+    const provider = createProvider({ backend: "jsonl", root: FIXTURE_STORE_ROOT })
+
+    const result = await resolveProjectId("proj_present", {
+      provider,
+    })
+
+    expect(result.project.projectId).toBe("proj_present")
+    expect(result.matchType).toBe("exact")
+  })
+
+  it("should resolve project using SQLite provider", async () => {
+    const provider = createProvider({ backend: "sqlite", dbPath: FIXTURE_SQLITE_PATH })
+
+    const result = await resolveProjectId("proj_present", {
+      provider,
+    })
+
+    expect(result.project.projectId).toBe("proj_present")
+    expect(result.matchType).toBe("exact")
+  })
+
+  it("should support prefix matching with provider", async () => {
+    const provider = createProvider({ backend: "sqlite", dbPath: FIXTURE_SQLITE_PATH })
+
+    const result = await resolveProjectId("proj_pres", {
+      provider,
+      allowPrefix: true,
+    })
+
+    expect(result.project.projectId).toBe("proj_present")
+    expect(result.matchType).toBe("prefix")
+  })
+
+  it("should throw NotFoundError with provider for non-existent project", async () => {
+    const provider = createProvider({ backend: "sqlite", dbPath: FIXTURE_SQLITE_PATH })
+
+    await expect(
+      resolveProjectId("nonexistent_project", { provider })
     ).rejects.toThrow(NotFoundError)
   })
 })

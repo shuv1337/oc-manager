@@ -975,3 +975,426 @@ describe("chat show --clipboard", () => {
     expect(result.exitCode).toBe(3);
   });
 });
+
+// =============================================================================
+// chat list --experimental-sqlite tests
+// =============================================================================
+
+import { FIXTURE_SQLITE_PATH } from "../../helpers";
+
+// =============================================================================
+// chat show --experimental-sqlite tests
+// =============================================================================
+
+describe("chat show --experimental-sqlite", () => {
+  it("shows message by exact message ID with --db flag", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_user_01 --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data.messageId).toBe("msg_user_01");
+    expect(parsed.data.role).toBe("user");
+  });
+
+  it("shows message by message ID prefix with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_user --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data.messageId).toBe("msg_user_01");
+  });
+
+  it("shows message by 1-based index with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 1 --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    // Index 1 is the first message (oldest by createdAt)
+    expect(parsed.data.messageId).toBe("msg_user_01");
+    expect(parsed.data.role).toBe("user");
+  });
+
+  it("index 2 returns second message with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 2 --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data.messageId).toBe("msg_assistant_01");
+    expect(parsed.data.role).toBe("assistant");
+  });
+
+  it("includes hydrated message parts from SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_user_01 --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.parts).toBeArray();
+    expect(parsed.data.parts.length).toBeGreaterThan(0);
+  });
+
+  it("includes previewText computed from parts with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_user_01 --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.previewText).toContain("add unit tests");
+  });
+
+  it("serializes Date fields as ISO strings with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 1 --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    if (parsed.data.createdAt) {
+      expect(parsed.data.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    }
+  });
+
+  it("works with table format output and SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 1 --db ${FIXTURE_SQLITE_PATH} --format table`.quiet();
+    const output = result.stdout.toString();
+
+    expect(output).toContain("Message ID:");
+    expect(output).toContain("Role:");
+    expect(output).toContain("Content:");
+    expect(output).toContain("add unit tests");
+  });
+
+  it("works with ndjson format output and SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 1 --db ${FIXTURE_SQLITE_PATH} --format ndjson`.quiet();
+    const output = result.stdout.toString().trim();
+    const lines = output.split("\n");
+
+    // Single message = single line
+    expect(lines.length).toBe(1);
+    const parsed = JSON.parse(lines[0]);
+    expect(parsed).toHaveProperty("messageId");
+    expect(parsed).toHaveProperty("role");
+    expect(parsed.messageId).toBe("msg_user_01");
+  });
+
+  it("supports session ID prefix matching with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add --message msg_user_01 --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data.messageId).toBe("msg_user_01");
+  });
+
+  it("returns exit code 3 for non-existent message ID with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message nonexistent_msg --db ${FIXTURE_SQLITE_PATH} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+  });
+
+  it("returns exit code 3 for ambiguous message ID prefix with SQLite", async () => {
+    // "msg_" matches both msg_user_01 and msg_assistant_01
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --message msg_ --db ${FIXTURE_SQLITE_PATH} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+    const output = result.stderr.toString();
+    const parsed = JSON.parse(output);
+    expect(parsed.error).toContain("Ambiguous");
+  });
+
+  it("returns exit code 3 for index out of range with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 100 --db ${FIXTURE_SQLITE_PATH} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+    const output = result.stderr.toString();
+    const parsed = JSON.parse(output);
+    expect(parsed.error).toContain("out of range");
+  });
+
+  it("returns exit code 3 for non-existent session with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session nonexistent_session --message msg_user_01 --db ${FIXTURE_SQLITE_PATH} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+  });
+
+  it("returns error for non-existent database file", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat show --session session_add_tests --index 1 --db /nonexistent/path/to/db.sqlite --format json`.quiet().nothrow();
+
+    expect(result.exitCode).not.toBe(0);
+  });
+});
+
+// =============================================================================
+// chat list --experimental-sqlite tests
+// =============================================================================
+
+describe("chat list --experimental-sqlite", () => {
+  it("loads messages from SQLite database with --db flag", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add_tests --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed).toHaveProperty("ok", true);
+    expect(parsed).toHaveProperty("data");
+    expect(parsed.data).toBeArray();
+    expect(parsed.data.length).toBeGreaterThan(0);
+  });
+
+  it("returns correct message IDs from SQLite database", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add_tests --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    const messageIds = parsed.data.map((m: { messageId: string }) => m.messageId);
+    // SQLite fixture has msg_user_01 and msg_assistant_01 in session_add_tests
+    expect(messageIds).toContain("msg_user_01");
+    expect(messageIds).toContain("msg_assistant_01");
+  });
+
+  it("includes all expected message fields", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add_tests --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    for (const message of parsed.data) {
+      expect(message).toHaveProperty("sessionId");
+      expect(message).toHaveProperty("messageId");
+      expect(message).toHaveProperty("role");
+      expect(message).toHaveProperty("index");
+      expect(message).toHaveProperty("createdAt");
+    }
+  });
+
+  it("orders messages chronologically (oldest first)", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add_tests --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    // User message should come before assistant response
+    expect(parsed.data[0].role).toBe("user");
+    expect(parsed.data[1].role).toBe("assistant");
+  });
+
+  it("assigns 1-based indexes to messages", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add_tests --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data[0].index).toBe(1);
+    expect(parsed.data[1].index).toBe(2);
+  });
+
+  it("respects --limit option with SQLite backend", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add_tests --db ${FIXTURE_SQLITE_PATH} --format json --limit 1`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.length).toBe(1);
+  });
+
+  it("includes parts when --include-parts flag is set", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add_tests --db ${FIXTURE_SQLITE_PATH} --format json --include-parts`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    // At least one message should have hydrated parts
+    const messagesWithParts = parsed.data.filter((m: { parts: unknown }) => Array.isArray(m.parts));
+    expect(messagesWithParts.length).toBeGreaterThan(0);
+  });
+
+  it("serializes Date fields as ISO strings", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add_tests --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    for (const message of parsed.data) {
+      if (message.createdAt) {
+        expect(message.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+      }
+    }
+  });
+
+  it("works with table format output", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add_tests --db ${FIXTURE_SQLITE_PATH} --format table`.quiet();
+    const output = result.stdout.toString();
+
+    expect(output).toContain("#");
+    expect(output).toContain("Role");
+    expect(output).toContain("Message ID");
+    expect(output).toContain("user");
+    expect(output).toContain("assistant");
+  });
+
+  it("works with ndjson format output", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add_tests --db ${FIXTURE_SQLITE_PATH} --format ndjson`.quiet();
+    const output = result.stdout.toString().trim();
+    const lines = output.split("\n");
+
+    expect(lines.length).toBe(2); // 2 messages
+    for (const line of lines) {
+      const parsed = JSON.parse(line);
+      expect(parsed).toHaveProperty("messageId");
+      expect(parsed).toHaveProperty("role");
+    }
+  });
+
+  it("returns exit code 3 for non-existent session", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session nonexistent_session --db ${FIXTURE_SQLITE_PATH} --format json`.quiet().nothrow();
+
+    expect(result.exitCode).toBe(3);
+  });
+
+  it("returns error for non-existent database file", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add_tests --db /nonexistent/path/to/db.sqlite --format json`.quiet().nothrow();
+
+    expect(result.exitCode).not.toBe(0);
+  });
+
+  it("supports prefix matching for session ID with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat list --session session_add --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.length).toBe(2);
+    expect(parsed.data[0].sessionId).toBe("session_add_tests");
+  });
+});
+
+// =============================================================================
+// chat search --experimental-sqlite tests
+// =============================================================================
+
+describe("chat search --experimental-sqlite", () => {
+  it("outputs valid JSON with success envelope using --db flag", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "unit tests" --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed).toHaveProperty("ok", true);
+    expect(parsed).toHaveProperty("data");
+    expect(parsed.data).toBeArray();
+  });
+
+  it("finds matches for query in message content with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "unit tests" --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    // SQLite fixture has "unit tests" in msg_user_01 and msg_assistant_01
+    expect(parsed.data.length).toBeGreaterThan(0);
+  });
+
+  it("includes search result fields in JSON output with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "unit tests" --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    for (const item of parsed.data) {
+      expect(item).toHaveProperty("sessionId");
+      expect(item).toHaveProperty("sessionTitle");
+      expect(item).toHaveProperty("projectId");
+      expect(item).toHaveProperty("messageId");
+      expect(item).toHaveProperty("role");
+      expect(item).toHaveProperty("matchedText");
+      expect(item).toHaveProperty("index");
+    }
+  });
+
+  it("includes matched text snippet around query with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "utils module" --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.length).toBeGreaterThan(0);
+    // matchedText should contain the search terms
+    const matchedTexts = parsed.data.map((r: { matchedText: string }) => r.matchedText.toLowerCase());
+    expect(matchedTexts.some((t: string) => t.includes("utils module"))).toBe(true);
+  });
+
+  it("returns empty array for non-matching query with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "xyznonexistent123" --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data).toBeArray();
+    expect(parsed.data.length).toBe(0);
+  });
+
+  it("respects --limit option with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "unit tests" --db ${FIXTURE_SQLITE_PATH} --format json --limit 1`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.data.length).toBeLessThanOrEqual(1);
+  });
+
+  it("search is case-insensitive with SQLite", async () => {
+    const resultLower = await $`bun src/bin/opencode-manager.ts chat search --query "unit tests" --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const resultUpper = await $`bun src/bin/opencode-manager.ts chat search --query "UNIT TESTS" --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+
+    const parsedLower = JSON.parse(resultLower.stdout.toString());
+    const parsedUpper = JSON.parse(resultUpper.stdout.toString());
+
+    // Both should return the same number of results
+    expect(parsedLower.data.length).toBe(parsedUpper.data.length);
+    expect(parsedLower.data.length).toBeGreaterThan(0);
+  });
+
+  it("respects --project filter with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "unit tests" --project proj_present --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    for (const item of parsed.data) {
+      expect(item.projectId).toBe("proj_present");
+    }
+  });
+
+  it("returns empty array for non-matching project filter with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "unit tests" --project nonexistent_proj --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data.length).toBe(0);
+  });
+
+  it("works with ndjson format output and SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "unit tests" --db ${FIXTURE_SQLITE_PATH} --format ndjson`.quiet();
+    const output = result.stdout.toString().trim();
+
+    if (output) {
+      const lines = output.split("\n");
+      for (const line of lines) {
+        const parsed = JSON.parse(line);
+        expect(parsed).toHaveProperty("sessionId");
+        expect(parsed).toHaveProperty("messageId");
+        expect(parsed).toHaveProperty("matchedText");
+      }
+    }
+  });
+
+  it("works with table format output and SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "unit tests" --db ${FIXTURE_SQLITE_PATH} --format table`.quiet();
+    const output = result.stdout.toString();
+
+    expect(output).toContain("#");
+    expect(output).toContain("Session");
+  });
+
+  it("returns error for non-existent database file", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "unit tests" --db /nonexistent/path/to/db.sqlite --format json`.quiet().nothrow();
+
+    expect(result.exitCode).not.toBe(0);
+  });
+
+  it("returns empty results for whitespace-only query with SQLite", async () => {
+    const result = await $`bun src/bin/opencode-manager.ts chat search --query "   " --db ${FIXTURE_SQLITE_PATH} --format json`.quiet();
+    const output = result.stdout.toString();
+
+    const parsed = JSON.parse(output);
+    expect(parsed.ok).toBe(true);
+    expect(parsed.data.length).toBe(0);
+  });
+});
