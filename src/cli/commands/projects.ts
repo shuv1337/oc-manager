@@ -7,11 +7,10 @@
 import { Command, type OptionValues } from "commander"
 import { parseGlobalOptions, type GlobalOptions } from "../index"
 import {
-  loadProjectRecords,
   filterProjectsByState,
-  deleteProjectMetadata,
   type ProjectRecord,
 } from "../../lib/opencode-data"
+import { createProviderFromGlobalOptions } from "../../lib/opencode-data-provider"
 import {
   getOutputOptions,
   printProjectsOutput,
@@ -107,6 +106,16 @@ export function registerProjectsCommands(parent: Command): void {
         deleteOpts
       )
     })
+
+  projects.addHelpText(
+    "after",
+    [
+      "",
+      "Examples:",
+      "  opencode-manager projects list --experimental-sqlite",
+      "  opencode-manager projects list --db ~/.local/share/opencode/opencode.db",
+    ].join("\n")
+  )
 }
 
 /**
@@ -116,8 +125,11 @@ async function handleProjectsList(
   globalOpts: GlobalOptions,
   listOpts: ProjectsListOptions
 ): Promise<void> {
+  // Create data provider based on global options (JSONL or SQLite backend)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
   // Load project records from the data layer
-  let projects = await loadProjectRecords({ root: globalOpts.root })
+  let projects = await provider.loadProjectRecords()
 
   // Apply missing-only filter if requested
   if (listOpts.missingOnly) {
@@ -160,10 +172,14 @@ async function handleProjectsDelete(
 ): Promise<void> {
   const outputOpts = getOutputOptions(globalOpts)
 
-  // Resolve project ID to a project record
+  // Create data provider based on global options (JSONL or SQLite backend)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
+  // Resolve project ID to a project record (use provider for backend-agnostic resolution)
   const { project } = await resolveProjectId(deleteOpts.id, {
     root: globalOpts.root,
     allowPrefix: true,
+    provider,
   })
 
   const pathsToDelete = [project.filePath]
@@ -178,8 +194,8 @@ async function handleProjectsDelete(
   // Require confirmation for destructive operation
   requireConfirmation(deleteOpts.yes, "Project deletion")
 
-  // Backup files if requested
-  if (deleteOpts.backupDir) {
+  // Backup files if requested (only applies to JSONL backend - SQLite has no files to backup)
+  if (deleteOpts.backupDir && provider.backend === "jsonl") {
     const backupResult = await copyToBackupDir(pathsToDelete, {
       backupDir: deleteOpts.backupDir,
       prefix: "project",
@@ -201,13 +217,13 @@ async function handleProjectsDelete(
     }
   }
 
-  // Perform the deletion
-  const deleteResult = await deleteProjectMetadata([project], { dryRun: false })
+  // Perform the deletion using the provider (handles both JSONL and SQLite)
+  const deleteResult = await provider.deleteProjectMetadata([project], { dryRun: false })
 
   if (deleteResult.failed.length > 0) {
     throw new FileOperationError(
       `Failed to delete ${deleteResult.failed.length} file(s): ${deleteResult.failed
-        .map((f) => `${f.path}: ${f.error}`)
+        .map((f: { path: string; error?: string }) => `${f.path}: ${f.error || "unknown error"}`)
         .join(", ")}`,
       "delete"
     )

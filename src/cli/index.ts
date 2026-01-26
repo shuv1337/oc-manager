@@ -51,6 +51,14 @@ export interface GlobalOptions {
   clipboard: boolean
   /** Directory for backup copies before deletion */
   backupDir?: string
+  /** Use SQLite database instead of JSONL files (experimental) */
+  experimentalSqlite: boolean
+  /** Path to SQLite database (implies --experimental-sqlite) */
+  dbPath?: string
+  /** Fail fast on any SQLite error or malformed data */
+  sqliteStrict: boolean
+  /** Wait for SQLite write locks to clear before failing */
+  forceWrite: boolean
 }
 
 /**
@@ -66,6 +74,10 @@ export const DEFAULT_OPTIONS: GlobalOptions = {
   quiet: false,
   clipboard: false,
   backupDir: undefined,
+  experimentalSqlite: false,
+  dbPath: undefined,
+  sqliteStrict: false,
+  forceWrite: false,
 }
 
 /**
@@ -73,6 +85,7 @@ export const DEFAULT_OPTIONS: GlobalOptions = {
  */
 function createProgram(): Command {
   const program = new Command()
+  program.configureHelp({ showGlobalOptions: true })
 
   program
     .name("opencode-manager")
@@ -108,6 +121,25 @@ function createProgram(): Command {
     .option("-q, --quiet", "Suppress non-essential output", DEFAULT_OPTIONS.quiet)
     .option("-c, --clipboard", "Copy output to clipboard", DEFAULT_OPTIONS.clipboard)
     .option("--backup-dir <path>", "Directory for backup copies before deletion")
+    .option(
+      "--experimental-sqlite",
+      "Use SQLite database instead of JSONL files (experimental; schema may change)",
+      DEFAULT_OPTIONS.experimentalSqlite
+    )
+    .option(
+      "--db <path>",
+      "Path to SQLite database (implies --experimental-sqlite). Default: ~/.local/share/opencode/opencode.db"
+    )
+    .option(
+      "--sqlite-strict",
+      "Fail on any SQLite warning or malformed data (no partial results)",
+      DEFAULT_OPTIONS.sqliteStrict
+    )
+    .option(
+      "--force-write",
+      "Wait for SQLite write locks to clear before failing",
+      DEFAULT_OPTIONS.forceWrite
+    )
 
   // Projects subcommand group
   registerProjectsCommands(program)
@@ -132,6 +164,10 @@ function createProgram(): Command {
  * Resolves paths and converts types as needed.
  */
 export function parseGlobalOptions(opts: Record<string, unknown>): GlobalOptions {
+  // --db implies --experimental-sqlite
+  const dbPath = opts.db ? resolve(String(opts.db)) : undefined
+  const experimentalSqlite = Boolean(opts.experimentalSqlite) || dbPath !== undefined
+
   return {
     root: resolve(String(opts.root ?? DEFAULT_OPTIONS.root)),
     format: validateFormat(String(opts.format ?? DEFAULT_OPTIONS.format)),
@@ -142,6 +178,10 @@ export function parseGlobalOptions(opts: Record<string, unknown>): GlobalOptions
     quiet: Boolean(opts.quiet ?? DEFAULT_OPTIONS.quiet),
     clipboard: Boolean(opts.clipboard ?? DEFAULT_OPTIONS.clipboard),
     backupDir: opts.backupDir ? resolve(String(opts.backupDir)) : undefined,
+    experimentalSqlite,
+    dbPath,
+    sqliteStrict: Boolean(opts.sqliteStrict ?? DEFAULT_OPTIONS.sqliteStrict),
+    forceWrite: Boolean(opts.forceWrite ?? DEFAULT_OPTIONS.forceWrite),
   }
 }
 

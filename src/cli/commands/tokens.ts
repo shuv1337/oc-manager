@@ -7,13 +7,7 @@
 
 import { Command, type OptionValues } from "commander"
 import { parseGlobalOptions, type GlobalOptions } from "../index"
-import {
-  computeGlobalTokenSummary,
-  computeProjectTokenSummary,
-  computeSessionTokenSummary,
-  loadProjectRecords,
-  loadSessionRecords,
-} from "../../lib/opencode-data"
+import { createProviderFromGlobalOptions } from "../../lib/opencode-data-provider"
 import { getOutputOptions, printAggregateTokensOutput, printTokensOutput } from "../output"
 import { handleError } from "../errors"
 import { findProjectById, findSessionById } from "../resolvers"
@@ -101,6 +95,16 @@ export function registerTokensCommands(parent: Command): void {
         handleError(error, globalOpts.format)
       }
     })
+
+  tokens.addHelpText(
+    "after",
+    [
+      "",
+      "Examples:",
+      "  opencode-manager tokens session --session <id> --experimental-sqlite",
+      "  opencode-manager tokens global --db ~/.local/share/opencode/opencode.db",
+    ].join("\n")
+  )
 }
 
 /**
@@ -110,14 +114,17 @@ async function handleTokensSession(
   globalOpts: GlobalOptions,
   sessionOpts: TokensSessionOptions
 ): Promise<void> {
+  // Create provider based on global options (JSONL or SQLite)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
   // Load all sessions to find the one we want
-  const sessions = await loadSessionRecords({ root: globalOpts.root })
+  const sessions = await provider.loadSessionRecords()
 
   // Find the session by ID
   const session = findSessionById(sessions, sessionOpts.session)
 
   // Compute token summary for the session
-  const summary = await computeSessionTokenSummary(session, globalOpts.root)
+  const summary = await provider.computeSessionTokenSummary(session)
 
   // Output the result
   const outputOpts = getOutputOptions(globalOpts)
@@ -131,20 +138,22 @@ async function handleTokensProject(
   globalOpts: GlobalOptions,
   projectOpts: TokensProjectOptions
 ): Promise<void> {
+  // Create provider based on global options (JSONL or SQLite)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
   // Load all projects to validate the project exists
-  const projects = await loadProjectRecords({ root: globalOpts.root })
+  const projects = await provider.loadProjectRecords()
 
   // Find the project by ID (throws if not found)
   findProjectById(projects, projectOpts.project)
 
   // Load all sessions to compute token summary
-  const sessions = await loadSessionRecords({ root: globalOpts.root })
+  const sessions = await provider.loadSessionRecords()
 
   // Compute token summary for the project
-  const summary = await computeProjectTokenSummary(
+  const summary = await provider.computeProjectTokenSummary(
     projectOpts.project,
-    sessions,
-    globalOpts.root
+    sessions
   )
 
   // Output the result
@@ -156,11 +165,14 @@ async function handleTokensProject(
  * Handle the tokens global command.
  */
 async function handleTokensGlobal(globalOpts: GlobalOptions): Promise<void> {
+  // Create provider based on global options (JSONL or SQLite)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
   // Load all sessions to compute global token summary
-  const sessions = await loadSessionRecords({ root: globalOpts.root })
+  const sessions = await provider.loadSessionRecords()
 
   // Compute token summary across all sessions
-  const summary = await computeGlobalTokenSummary(sessions, globalOpts.root)
+  const summary = await provider.computeGlobalTokenSummary(sessions)
 
   // Output the result
   const outputOpts = getOutputOptions(globalOpts)

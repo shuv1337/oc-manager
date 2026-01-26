@@ -7,13 +7,8 @@
 
 import { Command, type OptionValues } from "commander"
 import { parseGlobalOptions, type GlobalOptions } from "../index"
-import {
-  loadSessionChatIndex,
-  loadSessionRecords,
-  hydrateChatMessageParts,
-  searchSessionsChat,
-  type ChatMessage,
-} from "../../lib/opencode-data"
+import { type ChatMessage, type ChatSearchResult } from "../../lib/opencode-data"
+import { createProviderFromGlobalOptions } from "../../lib/opencode-data-provider"
 import { copyToClipboard } from "../../lib/clipboard"
 import { resolveSessionId } from "../resolvers"
 import { withErrorHandling, UsageError, NotFoundError } from "../errors"
@@ -141,6 +136,16 @@ export function registerChatCommands(parent: Command): void {
         searchOpts
       )
     })
+
+  chat.addHelpText(
+    "after",
+    [
+      "",
+      "Examples:",
+      "  opencode-manager chat list --session <id> --experimental-sqlite",
+      "  opencode-manager chat list --session <id> --db ~/.local/share/opencode/opencode.db",
+    ].join("\n")
+  )
 }
 
 /**
@@ -153,19 +158,23 @@ async function handleChatList(
   globalOpts: GlobalOptions,
   listOpts: ChatListOptions
 ): Promise<void> {
-  // Resolve session ID (with prefix matching)
+  // Create provider from global options (JSONL or SQLite)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
+  // Resolve session ID (with prefix matching) using the provider
   const { session } = await resolveSessionId(listOpts.session, {
     root: globalOpts.root,
     allowPrefix: true,
+    provider,
   })
 
   // Load message index for the session
-  let messages = await loadSessionChatIndex(session.sessionId, globalOpts.root)
+  let messages = await provider.loadSessionChatIndex(session.sessionId)
 
   // Hydrate parts if requested
   if (listOpts.includeParts) {
     messages = await Promise.all(
-      messages.map((msg) => hydrateChatMessageParts(msg, globalOpts.root))
+      messages.map((msg: ChatMessage) => provider.hydrateChatMessageParts(msg))
     )
   }
 
@@ -175,7 +184,7 @@ async function handleChatList(
   }
 
   // Add 1-based index for display
-  const indexedMessages: IndexedChatMessage[] = messages.map((msg, i) => ({
+  const indexedMessages: IndexedChatMessage[] = messages.map((msg: ChatMessage, i: number) => ({
     ...msg,
     index: i + 1,
   }))
@@ -207,14 +216,18 @@ async function handleChatShow(
     )
   }
 
-  // Resolve session ID (with prefix matching)
+  // Create provider from global options (JSONL or SQLite)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
+  // Resolve session ID (with prefix matching) using the provider
   const { session } = await resolveSessionId(showOpts.session, {
     root: globalOpts.root,
     allowPrefix: true,
+    provider,
   })
 
   // Load all messages for the session
-  const messages = await loadSessionChatIndex(session.sessionId, globalOpts.root)
+  const messages = await provider.loadSessionChatIndex(session.sessionId)
 
   if (messages.length === 0) {
     throw new NotFoundError(
@@ -228,17 +241,17 @@ async function handleChatShow(
   if (showOpts.message) {
     // Find by message ID (exact or prefix match)
     const messageId = showOpts.message
-    message = messages.find((m) => m.messageId === messageId)
+    message = messages.find((m: ChatMessage) => m.messageId === messageId)
     if (!message) {
       // Try prefix matching
-      const prefixMatches = messages.filter((m) =>
+      const prefixMatches = messages.filter((m: ChatMessage) =>
         m.messageId.startsWith(messageId)
       )
       if (prefixMatches.length === 1) {
         message = prefixMatches[0]
       } else if (prefixMatches.length > 1) {
         throw new NotFoundError(
-          `Ambiguous message ID prefix "${messageId}" matches ${prefixMatches.length} messages: ${prefixMatches.map((m) => m.messageId).join(", ")}`,
+          `Ambiguous message ID prefix "${messageId}" matches ${prefixMatches.length} messages: ${prefixMatches.map((m: ChatMessage) => m.messageId).join(", ")}`,
           "message"
         )
       } else {
@@ -261,12 +274,12 @@ async function handleChatShow(
   }
 
   // Hydrate message parts to get full content
-  const hydratedMessage = await hydrateChatMessageParts(message, globalOpts.root)
+  const hydratedMessage = await provider.hydrateChatMessageParts(message)
 
   // Copy to clipboard if requested
   if (showOpts.clipboard) {
     const content = hydratedMessage.parts
-      ?.map((p) => p.text)
+      ?.map((p: { text: string }) => p.text)
       .join("\n\n") ?? hydratedMessage.previewText
     try {
       await copyToClipboard(content)
@@ -296,22 +309,23 @@ async function handleChatSearch(
   globalOpts: GlobalOptions,
   searchOpts: ChatSearchOptions
 ): Promise<void> {
+  // Create provider from global options (JSONL or SQLite)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
   // Load sessions to search
-  const sessions = await loadSessionRecords({
-    root: globalOpts.root,
+  const sessions = await provider.loadSessionRecords({
     projectId: searchOpts.project,
   })
 
   // Search across sessions using the limit from global options
-  const results = await searchSessionsChat(
+  const results = await provider.searchSessionsChat(
     sessions,
     searchOpts.query,
-    globalOpts.root,
     { maxResults: globalOpts.limit }
   )
 
   // Add 1-based index for display
-  const indexedResults: IndexedChatSearchResult[] = results.map((result, i) => ({
+  const indexedResults: IndexedChatSearchResult[] = results.map((result: ChatSearchResult, i: number) => ({
     ...result,
     index: i + 1,
   }))

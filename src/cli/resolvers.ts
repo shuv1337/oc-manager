@@ -3,6 +3,10 @@
  *
  * These helpers provide consistent ID resolution across all CLI commands,
  * supporting both exact matches and flexible matching patterns.
+ *
+ * Resolvers can optionally accept a DataProvider to support both JSONL and
+ * SQLite backends. When no provider is given, they fall back to direct JSONL
+ * loading for backward compatibility.
  */
 
 import {
@@ -13,6 +17,7 @@ import {
   type ProjectRecord,
   type SessionRecord,
 } from "../lib/opencode-data"
+import { type DataProvider } from "../lib/opencode-data-provider"
 import { NotFoundError, projectNotFound, sessionNotFound } from "./errors"
 
 // ========================
@@ -29,6 +34,13 @@ export interface ResolveSessionOptions extends SessionLoadOptions {
    * Defaults to false.
    */
   allowPrefix?: boolean
+
+  /**
+   * Optional data provider for backend-agnostic data loading.
+   * When provided, uses the provider's loadSessionRecords method.
+   * When omitted, falls back to direct JSONL loading for backward compatibility.
+   */
+  provider?: DataProvider
 }
 
 /**
@@ -81,7 +93,7 @@ export function findSessionsByPrefix(
  * Supports exact matching and optional prefix matching.
  *
  * @param sessionId - Session ID or prefix to resolve
- * @param options - Resolution options including root and projectId filters
+ * @param options - Resolution options including root, projectId filters, and optional provider
  * @returns Resolution result with session and metadata
  * @throws NotFoundError if no session matches
  * @throws NotFoundError if prefix matches multiple sessions (ambiguous)
@@ -90,10 +102,13 @@ export async function resolveSessionId(
   sessionId: string,
   options: ResolveSessionOptions = {}
 ): Promise<ResolveSessionResult> {
-  const sessions = await loadSessionRecords({
-    root: options.root,
-    projectId: options.projectId,
-  })
+  // Use provider if available, otherwise fall back to direct JSONL loading
+  const sessions = options.provider
+    ? await options.provider.loadSessionRecords({ projectId: options.projectId })
+    : await loadSessionRecords({
+        root: options.root,
+        projectId: options.projectId,
+      })
 
   // Try exact match first
   const exactMatch = sessions.find((s) => s.sessionId === sessionId)
@@ -146,6 +161,13 @@ export interface ResolveProjectOptions extends LoadOptions {
    * Defaults to false.
    */
   allowPrefix?: boolean
+
+  /**
+   * Optional data provider for backend-agnostic data loading.
+   * When provided, uses the provider's loadProjectRecords method.
+   * When omitted, falls back to direct JSONL loading for backward compatibility.
+   */
+  provider?: DataProvider
 }
 
 /**
@@ -198,7 +220,7 @@ export function findProjectsByPrefix(
  * Supports exact matching and optional prefix matching.
  *
  * @param projectId - Project ID or prefix to resolve
- * @param options - Resolution options including root
+ * @param options - Resolution options including root and optional provider
  * @returns Resolution result with project and metadata
  * @throws NotFoundError if no project matches
  * @throws NotFoundError if prefix matches multiple projects (ambiguous)
@@ -207,9 +229,12 @@ export async function resolveProjectId(
   projectId: string,
   options: ResolveProjectOptions = {}
 ): Promise<ResolveProjectResult> {
-  const projects = await loadProjectRecords({
-    root: options.root,
-  })
+  // Use provider if available, otherwise fall back to direct JSONL loading
+  const projects = options.provider
+    ? await options.provider.loadProjectRecords()
+    : await loadProjectRecords({
+        root: options.root,
+      })
 
   // Try exact match first
   const exactMatch = projects.find((p) => p.projectId === projectId)

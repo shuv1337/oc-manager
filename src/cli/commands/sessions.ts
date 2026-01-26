@@ -8,14 +8,10 @@
 import { Command, type OptionValues } from "commander"
 import { parseGlobalOptions, type GlobalOptions } from "../index"
 import {
-  loadSessionRecords,
-  loadProjectRecords,
-  deleteSessionMetadata,
-  updateSessionTitle,
-  moveSession,
   copySession,
   type SessionRecord,
 } from "../../lib/opencode-data"
+import { createProviderFromGlobalOptions } from "../../lib/opencode-data-provider"
 import {
   getOutputOptions,
   printSessionsOutput,
@@ -195,6 +191,16 @@ export function registerSessionsCommands(parent: Command): void {
         copyOpts
       )
     })
+
+  sessions.addHelpText(
+    "after",
+    [
+      "",
+      "Examples:",
+      "  opencode-manager sessions list --experimental-sqlite",
+      "  opencode-manager sessions list --db ~/.local/share/opencode/opencode.db",
+    ].join("\n")
+  )
 }
 
 /**
@@ -217,10 +223,12 @@ async function handleSessionsList(
   globalOpts: GlobalOptions,
   listOpts: SessionsListOptions
 ): Promise<void> {
+  // Create data provider based on global options (JSONL or SQLite backend)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
   // Load session records from the data layer
   // If a project filter is provided, pass it to the loader
-  let sessions = await loadSessionRecords({
-    root: globalOpts.root,
+  let sessions = await provider.loadSessionRecords({
     projectId: listOpts.project,
   })
 
@@ -277,7 +285,7 @@ async function handleSessionsList(
  * Handle the sessions delete command.
  *
  * This command deletes a session's metadata file from the OpenCode storage.
- * It does NOT delete associated chat message files (yet).
+ * For SQLite backend, it deletes session, messages, and parts in a transaction.
  *
  * Exit codes:
  * - 0: Success (or dry-run completed)
@@ -291,10 +299,14 @@ async function handleSessionsDelete(
 ): Promise<void> {
   const outputOpts = getOutputOptions(globalOpts)
 
-  // Resolve session ID to a session record
+  // Create data provider based on global options (JSONL or SQLite backend)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
+  // Resolve session ID to a session record (use provider for backend-agnostic resolution)
   const { session } = await resolveSessionId(deleteOpts.session, {
     root: globalOpts.root,
     allowPrefix: true,
+    provider,
   })
 
   const pathsToDelete = [session.filePath]
@@ -309,8 +321,8 @@ async function handleSessionsDelete(
   // Require confirmation for destructive operation
   requireConfirmation(deleteOpts.yes, "Session deletion")
 
-  // Backup files if requested
-  if (deleteOpts.backupDir) {
+  // Backup files if requested (only applies to JSONL backend - SQLite has no files to backup)
+  if (deleteOpts.backupDir && provider.backend === "jsonl") {
     const backupResult = await copyToBackupDir(pathsToDelete, {
       backupDir: deleteOpts.backupDir,
       prefix: "session",
@@ -332,13 +344,13 @@ async function handleSessionsDelete(
     }
   }
 
-  // Perform the deletion
-  const deleteResult = await deleteSessionMetadata([session], { dryRun: false })
+  // Perform the deletion using the provider (handles both JSONL and SQLite)
+  const deleteResult = await provider.deleteSessionMetadata([session], { dryRun: false })
 
   if (deleteResult.failed.length > 0) {
     throw new FileOperationError(
       `Failed to delete ${deleteResult.failed.length} file(s): ${deleteResult.failed
-        .map((f) => `${f.path}: ${f.error}`)
+        .map((f) => `${f.path}: ${f.error || "unknown error"}`)
         .join(", ")}`,
       "delete"
     )
@@ -356,6 +368,7 @@ async function handleSessionsDelete(
  * Handle the sessions rename command.
  *
  * This command updates a session's title in its metadata file.
+ * For SQLite backend, it updates the title in the database.
  *
  * Exit codes:
  * - 0: Success
@@ -374,14 +387,18 @@ async function handleSessionsRename(
     throw new UsageError("Title cannot be empty")
   }
 
-  // Resolve session ID to a session record
+  // Create data provider based on global options (JSONL or SQLite backend)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
+  // Resolve session ID to a session record (use provider for backend-agnostic resolution)
   const { session } = await resolveSessionId(renameOpts.session, {
     root: globalOpts.root,
     allowPrefix: true,
+    provider,
   })
 
-  // Update the session title
-  await updateSessionTitle(session.filePath, newTitle)
+  // Update the session title using the provider
+  await provider.updateSessionTitle(session, newTitle)
 
   // Output success
   printSuccessOutput(
@@ -395,7 +412,8 @@ async function handleSessionsRename(
  * Handle the sessions move command.
  *
  * This command moves a session to a different project.
- * The session file is moved to the target project's session directory.
+ * For JSONL backend, the session file is moved to the target project's session directory.
+ * For SQLite backend, the project_id column is updated in the database.
  *
  * Exit codes:
  * - 0: Success
@@ -408,39 +426,46 @@ async function handleSessionsMove(
 ): Promise<void> {
   const outputOpts = getOutputOptions(globalOpts)
 
-  // Resolve session ID to a session record
+  // Create data provider based on global options (JSONL or SQLite backend)
+  const provider = createProviderFromGlobalOptions(globalOpts)
+
+  // Resolve session ID to a session record (use provider for backend-agnostic resolution)
   const { session } = await resolveSessionId(moveOpts.session, {
     root: globalOpts.root,
     allowPrefix: true,
+    provider,
   })
 
   // Validate target project exists
   // Use prefix matching for convenience, but require exactly one match
-  await resolveProjectId(moveOpts.to, {
+  // For SQLite, we don't enforce target project existence (consistent with JSONL behavior)
+  // but we still try to resolve it for prefix matching
+  const { project: targetProject } = await resolveProjectId(moveOpts.to, {
     root: globalOpts.root,
     allowPrefix: true,
+    provider,
   })
 
   // Check if session is already in the target project
-  if (session.projectId === moveOpts.to) {
+  if (session.projectId === targetProject.projectId) {
     printSuccessOutput(
-      `Session ${session.sessionId} is already in project ${moveOpts.to}`,
-      { sessionId: session.sessionId, projectId: moveOpts.to, moved: false },
+      `Session ${session.sessionId} is already in project ${targetProject.projectId}`,
+      { sessionId: session.sessionId, projectId: targetProject.projectId, moved: false },
       outputOpts.format
     )
     return
   }
 
-  // Move the session
-  const newRecord = await moveSession(session, moveOpts.to, globalOpts.root)
+  // Move the session using the provider
+  const newRecord = await provider.moveSession(session, targetProject.projectId)
 
   // Output success
   printSuccessOutput(
-    `Moved session ${session.sessionId} to project ${moveOpts.to}`,
+    `Moved session ${session.sessionId} to project ${targetProject.projectId}`,
     {
       sessionId: session.sessionId,
       fromProject: session.projectId,
-      toProject: moveOpts.to,
+      toProject: targetProject.projectId,
       newPath: newRecord.filePath,
     },
     outputOpts.format
