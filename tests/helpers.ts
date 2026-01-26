@@ -26,6 +26,11 @@ export const FIXTURES_ROOT = join(__dirname, "fixtures");
 export const FIXTURE_STORE_ROOT = join(FIXTURES_ROOT, "store");
 
 /**
+ * Path to the SQLite test fixture database.
+ */
+export const FIXTURE_SQLITE_PATH = join(FIXTURES_ROOT, "test.db");
+
+/**
  * Resolves a path relative to the fixtures directory.
  *
  * @param relativePath - Path relative to tests/fixtures/

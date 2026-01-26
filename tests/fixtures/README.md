@@ -6,7 +6,7 @@ Minimal fixture store matching the OpenCode on-disk schema.
 
 ```
 tests/fixtures/
-├── store/                    # Simulated ~/.local/share/opencode
+├── store/                    # Simulated ~/.local/share/opencode (JSONL backend)
 │   └── storage/
 │       ├── project/          # Project metadata (primary bucket)
 │       │   └── <projectId>.json
@@ -21,6 +21,8 @@ tests/fixtures/
 │       └── part/             # Parts per message
 │           └── <messageId>/
 │               └── <partId>.json
+├── test.db                   # SQLite database (SQLite backend)
+├── create-test-db.ts         # Script to regenerate test.db
 └── README.md
 ```
 
@@ -147,7 +149,63 @@ The loader checks primary paths first, then falls back to legacy paths. Test fix
 
 ## Test Fixtures Included
 
+### JSONL Fixtures (store/)
+
 1. **proj_present**: Project with existing worktree (state: "present")
 2. **proj_missing**: Project with non-existent worktree (state: "missing")
 3. Two sessions with distinct titles for search/filter testing
 4. Chat messages covering text, tool, and subtask part types
+
+### SQLite Fixture (test.db)
+
+The SQLite fixture contains the same data as the JSONL fixtures, plus additional records for more comprehensive testing.
+
+**Summary:**
+- 2 projects (proj_present, proj_missing)
+- 5 sessions (including a forked session with parent_id)
+- 10 messages (across all sessions)
+- 20 parts (text, tool, subtask types with various states)
+
+**To regenerate test.db:**
+
+```bash
+bun run tests/fixtures/create-test-db.ts
+```
+
+**SQLite Schema:**
+
+```sql
+-- project table
+CREATE TABLE project (
+  id TEXT PRIMARY KEY,
+  data TEXT NOT NULL    -- JSON blob with project metadata
+);
+
+-- session table
+CREATE TABLE session (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  parent_id TEXT,       -- NULL for root sessions, set for forks
+  created_at INTEGER,   -- Unix timestamp (ms)
+  updated_at INTEGER,   -- Unix timestamp (ms)
+  data TEXT NOT NULL    -- JSON blob with session metadata
+);
+
+-- message table
+CREATE TABLE message (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  created_at INTEGER,   -- Unix timestamp (ms)
+  data TEXT NOT NULL    -- JSON blob with message metadata
+);
+
+-- part table
+CREATE TABLE part (
+  id TEXT PRIMARY KEY,
+  message_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  data TEXT NOT NULL    -- JSON blob with part content
+);
+```
+
+The `data` column in each table contains JSON with the same structure as the corresponding JSONL files.
