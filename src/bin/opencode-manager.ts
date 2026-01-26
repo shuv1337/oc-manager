@@ -23,7 +23,7 @@ const CLI_SUBCOMMANDS = new Set([
 const TUI_SUBCOMMANDS = new Set(["tui"])
 
 // Version from package.json
-const VERSION = "0.4.0"
+const VERSION = "0.4.3"
 
 function printHelp(): void {
   console.log(`opencode-manager v${VERSION}
